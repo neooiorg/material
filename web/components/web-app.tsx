@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Eye, EyeOff, HardHat } from "lucide-react";
+import { Bell, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { authClient, type AppUser, type Role } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -18,6 +18,7 @@ import { Docs } from "@/components/docs";
 import { Detail, type DetailResource } from "@/components/detail";
 import { AppSidebar, nav } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { BrandLogo } from "@/components/brand-logo";
 
 function Login({ onLogin }: { onLogin: () => void }) {
   const [email, setEmail] = useState("");
@@ -50,8 +51,8 @@ function Login({ onLogin }: { onLogin: () => void }) {
     <div className="w-full max-w-[520px]">
       <Card className="gap-0 py-0 shadow-[0_24px_80px_-48px_rgba(0,0,0,0.45)]">
         <CardHeader className="items-center px-6 pb-8 pt-14 text-center sm:px-14 sm:pt-16">
-          <div className="mb-6 flex size-12 items-center justify-center rounded-xl border bg-background text-foreground shadow-sm">
-            <HardHat className="size-6" aria-hidden="true" />
+          <div className="mb-6 flex size-12 items-center justify-center rounded-xl border bg-background shadow-sm">
+            <BrandLogo className="h-8 w-auto" aria-hidden="true" />
           </div>
           <CardTitle className="text-3xl font-semibold tracking-[-0.03em]">Đăng nhập</CardTitle>
           <p className="mt-2 text-base text-muted-foreground">Tiếp tục vào hệ thống quản lý vật tư.</p>

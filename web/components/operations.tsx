@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { DataGrid, DataState, Field, NativeSelect, PageTitle, Status, useApi } from "@/components/common";
+import { DashboardStatCard } from "@/components/dashboard-stat-card";
+import { Boxes, Building2, ClipboardCheck, PackageCheck, WalletCards } from "lucide-react";
 
 type OrderRow = { id: number; code: string; projectName: string; creatorName: string; createdAt: string; status: string; total: string; note?: string; items?: { name: string; qty: string; unit: string }[] };
 type Project = { id: number; code: string; name: string; status: string; address?: string; defaultSupplierContactId?: number | null };
@@ -19,8 +21,32 @@ type Contact = { id: number; name: string; phone: string };
 
 export function Dashboard({ role }: { role: Role }) {
   const query = useApi<{ projectCount: number; pendingCount: number; approvedCount: number; materialCount: number; approvedMonth: number; recentOrders: OrderRow[] }>("/api/dashboard");
-  const cards = query.data ? [{ label: "Công trình", value: query.data.projectCount, href: "/projects" }, { label: "Đơn chờ duyệt", value: query.data.pendingCount, href: role === "admin" ? "/approvals" : "/orders" }, { label: "Đơn đã duyệt", value: query.data.approvedCount, href: "/orders" }, { label: "Vật tư", value: query.data.materialCount, href: role === "admin" ? "/admin/materials" : "/projects" }] : [];
-  return <><PageTitle title="Tổng quan" description="Dữ liệu cập nhật từ hệ thống dùng chung với mobile." action={role !== "accountant" ? <Button render={<Link href="/orders/new"/>}>Tạo đơn vật tư</Button> : undefined}/><DataState loading={query.loading} error={query.error} retry={query.refresh}><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <Link href={card.href} key={card.label}><Card className="h-full transition-colors hover:border-primary/50"><CardContent className="py-5"><p className="text-sm text-muted-foreground">{card.label}</p><strong className="mt-2 block text-3xl tabular-nums">{card.value}</strong></CardContent></Card></Link>)}</div><Card className="mt-4"><CardContent className="flex items-center justify-between gap-4 py-5"><div><p className="text-sm text-muted-foreground">Giá trị đơn duyệt trong tháng</p><strong className="text-2xl">{money(query.data?.approvedMonth)}</strong></div></CardContent></Card><section className="mt-8"><h2 className="mb-3 text-lg font-semibold">Đơn gần đây</h2><OrderTable rows={query.data?.recentOrders ?? []}/></section></DataState></>;
+  const cards = query.data ? [
+    { label: "Công trình", value: query.data.projectCount, href: "/projects", detail: "Xem tổng hợp công trình", badge: "Đang theo dõi", icon: Building2 },
+    { label: "Đơn chờ duyệt", value: query.data.pendingCount, href: role === "admin" ? "/approvals" : "/orders", detail: "Xem các đơn đang chờ", badge: query.data.pendingCount > 0 ? "Cần xử lý" : "Đã xử lý", icon: ClipboardCheck, urgent: query.data.pendingCount > 0 },
+    { label: "Đơn đã duyệt", value: query.data.approvedCount, href: "/orders", detail: "Xem danh sách đơn", badge: "Đã duyệt", icon: PackageCheck },
+    { label: "Vật tư", value: query.data.materialCount, href: role === "admin" ? "/admin/materials" : "/projects", detail: "Xem danh mục vật tư", badge: "Trong danh mục", icon: Boxes },
+  ] : [];
+
+  return <>
+    <PageTitle title="Tổng quan" description="Dữ liệu cập nhật trực tiếp từ hệ thống quản lý vật tư." action={role !== "accountant" ? <Button render={<Link href="/orders/new"/>}>Tạo đơn vật tư</Button> : undefined}/>
+    <DataState loading={query.loading} error={query.error} retry={query.refresh}>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => <DashboardStatCard key={card.label} {...card}/>)}
+      </div>
+      <div className="mt-4 max-w-xl">
+        <DashboardStatCard
+          label="Giá trị đơn duyệt trong tháng"
+          value={money(query.data?.approvedMonth)}
+          detail="Tổng giá trị các đơn đã duyệt"
+          badge="Tháng này"
+          icon={WalletCards}
+          href={role === "site" ? "/orders" : "/reports"}
+        />
+      </div>
+      <section className="mt-8"><h2 className="mb-3 text-lg font-semibold">Đơn gần đây</h2><OrderTable rows={query.data?.recentOrders ?? []}/></section>
+    </DataState>
+  </>;
 }
 
 function OrderTable({ rows }: { rows: OrderRow[] }) {

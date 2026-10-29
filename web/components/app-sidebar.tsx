@@ -10,7 +10,6 @@ import {
   ChevronUp,
   ClipboardCheck,
   ClipboardList,
-  HardHat,
   History,
   LayoutDashboard,
   LogOut,
@@ -43,6 +42,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { BrandLogo } from "@/components/brand-logo";
 
 export const nav = [
   { href: "/", label: "Tổng quan", icon: LayoutDashboard, roles: ["admin", "site", "accountant"], group: "Vận hành" },
@@ -96,8 +96,8 @@ export function AppSidebar({
               render={<Link href="/" aria-label="Material — Quản lý vật tư" />}
               tooltip="Material"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <HardHat className="size-4" aria-hidden="true" />
+              <span className="flex size-8 shrink-0 items-center justify-center">
+                <BrandLogo className="h-8 w-auto" aria-hidden="true" />
               </span>
               <span className="grid min-w-0 flex-1 text-left leading-tight">
                 <span className="truncate text-sm font-semibold">Material</span>
