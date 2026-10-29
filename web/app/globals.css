@@ -123,9 +123,61 @@
   }
   body {
     @apply bg-background text-foreground;
+    min-height: 100svh;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
   html {
     @apply font-sans;
+  }
+}
+
+.pwa-install-panel {
+  position: fixed;
+  z-index: 50;
+  right: max(0.75rem, env(safe-area-inset-right));
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  left: max(0.75rem, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 32rem;
+  margin-inline: auto;
+  padding: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--background);
+  box-shadow: 0 22px 60px -34px color-mix(in oklch, var(--foreground) 45%, transparent);
+}
+
+@media (display-mode: standalone) {
+  .pwa-install-panel {
+    display: none;
+  }
+
+  [data-slot="sidebar-inset"] > header {
+    height: calc(3.5rem + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+  }
+
+  [data-slot="sidebar-container"],
+  [data-slot="sidebar"][data-mobile="true"] {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  [data-slot="sidebar-inset"] > main {
+    padding-bottom: max(3rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 420px) {
+  .pwa-install-panel {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .pwa-install-panel > button:not([aria-label]) {
+    width: 100%;
   }
 }
 

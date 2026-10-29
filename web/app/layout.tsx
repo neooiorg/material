@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
+import { PwaManager } from "@/components/pwa-manager";
 
 const manrope = localFont({
   variable: "--font-manrope",
@@ -18,8 +19,31 @@ const manrope = localFont({
 export const metadata: Metadata = {
   title: "Material | Quản lý vật tư công trình",
   description: "Đặt vật tư, duyệt đơn, theo dõi công trình và chi phí.",
+  applicationName: "Material",
+  manifest: "/manifest.webmanifest",
+  formatDetection: { telephone: false },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Material",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/app-icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  other: { "mobile-web-app-capable": "yes" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#4f46e5",
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <html lang="vi" className={manrope.variable}><body className="min-h-screen bg-background font-sans text-foreground antialiased"><TooltipProvider>{children}</TooltipProvider><Toaster richColors position="top-right" /></body></html>;
+  return <html lang="vi" className={manrope.variable}><body className="min-h-screen bg-background font-sans text-foreground antialiased"><TooltipProvider>{children}</TooltipProvider><PwaManager/><Toaster richColors position="top-right" /></body></html>;
 }
