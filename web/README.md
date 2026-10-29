@@ -28,10 +28,10 @@ pnpm --dir server typecheck
 
 Dockerfile ở `web/Dockerfile` dùng build context là **thư mục gốc repository**. Trong Dokploy, đặt `MATERIAL_API_URL` cho service web là URL backend mà container có thể truy cập, ví dụ URL nội bộ trong cùng Docker network hoặc URL HTTPS public của API. Expose web cổng 3000. Thêm public origin của web vào `CORS_ORIGINS` của backend để Better Auth chấp nhận đăng nhập; cho môi trường local, `localhost:3000` và `127.0.0.1:3000` đã được cho phép. Cấu hình `APP_URL` thành URL web khi muốn email mời thành viên trỏ đến web.
 
-Để Google OAuth hoạt động đồng thời qua API mobile và proxy cùng-origin của web, đặt `BETTER_AUTH_ALLOWED_HOSTS` trên backend thành danh sách hostname API và web, không kèm protocol. Khi biến này có giá trị, Better Auth chỉ chấp nhận các hostname trong allowlist và dùng hostname của từng request để tạo callback. Proxy web tự ghi đè `X-Forwarded-Host` và `X-Forwarded-Proto`; không chuyển tiếp hai header này từ trình duyệt.
+Production mặc định tin cậy `material.apps.neooi.com` và cho phép origin HTTPS này. Có thể ghi đè bằng `BETTER_AUTH_ALLOWED_HOSTS` và `CORS_ORIGINS` nếu đổi domain. Better Auth dùng hostname đã được allowlist để tạo callback; proxy web tự ghi đè `X-Forwarded-Host` và `X-Forwarded-Proto` và không chuyển tiếp hai header này từ trình duyệt.
 
-Trong Dokploy tạo application Dockerfile mới với build context là repository root, Dockerfile path `web/Dockerfile`, container port `3000` và health check `GET /health`. Bật HTTPS cho domain web. Giữ nguyên service backend đang phục vụ mobile; web chỉ cần trỏ `MATERIAL_API_URL` tới backend đó.
+Trong Dokploy, web và backend nằm trong cùng project production cùng PostgreSQL hiện hữu. Web dùng Dockerfile `web/Dockerfile`, cổng `3000`, health check `GET /health`; backend dùng `server/Dockerfile`, cổng `4000`. Không còn quy trình phát hành mobile.
 
-Web hiện được chuẩn bị để deploy riêng. Chưa có domain và cấu hình Dokploy cho service web trong repository; cần khai báo các giá trị đó ở môi trường triển khai trước khi phát hành public.
+Production được triển khai tại `https://material.apps.neooi.com` và dùng backend/database trong cùng project Dokploy. Hệ thống hiện vận hành theo chế độ web-only; source Expo được giữ lại trong repository để tham chiếu nhưng không còn nằm trong quy trình phát hành.
 
-Đăng nhập email/mật khẩu đã dùng chung Better Auth với mobile. Hạ tầng callback Google đa hostname đã được chuẩn bị; sau khi có domain public cần thêm callback `https://<domain-web>/api/auth/callback/google` trong Google Cloud, cấu hình allowlist nói trên và kiểm tra redirect thực tế trước khi bật nút Google trên web.
+Đăng nhập email/mật khẩu dùng Better Auth. Với Google OAuth, Google Cloud phải có callback `https://material.apps.neooi.com/api/auth/callback/google`.
