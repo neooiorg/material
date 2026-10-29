@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install server dependencies
+        run: pnpm --dir server install --frozen-lockfile
+
       - name: Typecheck web
         run: pnpm web:typecheck
 
