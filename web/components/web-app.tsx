@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, BookOpen, Boxes, Building2, ChartNoAxesCombined, ClipboardCheck, ClipboardList, History, LayoutDashboard, LogOut, Menu, PackagePlus, Scale, Users, Wallet, X } from "lucide-react";
+import { Bell, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { authClient, type AppUser, type Role } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -15,24 +15,8 @@ import { Dashboard, Orders, OrderDetail, OrderCreate, Projects, ProjectDetail, R
 import { AdminCatalog, Budgets, Members } from "@/components/management";
 import { Docs } from "@/components/docs";
 import { Detail, type DetailResource } from "@/components/detail";
-
-const nav = [
-  { href: "/", label: "Tổng quan", icon: LayoutDashboard, roles: ["admin", "site", "accountant"] },
-  { href: "/orders/new", label: "Tạo đơn vật tư", icon: PackagePlus, roles: ["admin", "site"] },
-  { href: "/orders", label: "Đơn đặt vật tư", icon: ClipboardList, roles: ["admin", "site", "accountant"] },
-  { href: "/approvals", label: "Duyệt đơn", icon: ClipboardCheck, roles: ["admin"] },
-  { href: "/projects", label: "Tổng hợp công trình", icon: Building2, roles: ["admin", "site", "accountant"] },
-  { href: "/reconcile", label: "Đối chiếu", icon: Scale, roles: ["admin", "site", "accountant"] },
-  { href: "/reports", label: "Thống kê", icon: ChartNoAxesCombined, roles: ["admin", "accountant"] },
-  { href: "/admin/projects", label: "Quản lý công trình", icon: Building2, roles: ["admin"] },
-  { href: "/admin/materials", label: "Quản lý vật tư", icon: Boxes, roles: ["admin"] },
-  { href: "/admin/supplier-contacts", label: "Đơn vị cung cấp", icon: BookOpen, roles: ["admin"] },
-  { href: "/admin/budgets", label: "Dự toán", icon: Wallet, roles: ["admin"] },
-  { href: "/admin/members", label: "Thành viên", icon: Users, roles: ["admin"] },
-  { href: "/history", label: "Nhật ký", icon: History, roles: ["admin"] },
-  { href: "/notifications", label: "Thông báo", icon: Bell, roles: ["admin", "site", "accountant"] },
-  { href: "/docs", label: "Hướng dẫn", icon: BookOpen, roles: ["admin", "site", "accountant"] },
-] as const;
+import { AppSidebar, nav } from "@/components/app-sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 function Login({ onLogin }: { onLogin: () => void }) {
   const [email, setEmail] = useState("");
@@ -68,7 +52,6 @@ export function WebApp() {
   const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mobileOpen, setMobileOpen] = useState(false);
   async function loadUser() {
     setLoading(true);
     try { const result = await api<{ user: AppUser }>("/api/session"); if (!(["admin", "site", "accountant"] as string[]).includes(result.user.role)) { setUser(null); return; } setUser(result.user); }
@@ -76,21 +59,29 @@ export function WebApp() {
     finally { setLoading(false); }
   }
   useEffect(() => { void loadUser(); }, []);
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
   if (pathname === "/docs") return <div className="mx-auto max-w-5xl p-4 py-10 md:p-8"><Docs/></div>;
   if (loading) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Đang mở hệ thống…</div>;
   if (!user) return <Login onLogin={loadUser}/>;
   const role = user.role === "admin" || user.role === "site" || user.role === "accountant" ? user.role : "site";
   const current = nav.find((item) => item.href === pathname) ?? nav.find((item) => pathname.startsWith(item.href + "/") && item.href !== "/");
-  return <div className="min-h-screen lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
-    {mobileOpen && <button aria-label="Đóng menu" className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setMobileOpen(false)}/>}
-    <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r bg-card transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0`}>
-      <div className="flex h-16 items-center gap-3 border-b px-5"><div className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground"><Building2 className="size-5"/></div><div className="min-w-0"><strong className="block truncate text-sm">Material</strong><span className="block text-xs text-muted-foreground">Quản lý vật tư</span></div><Button className="ml-auto lg:hidden" size="icon" variant="ghost" aria-label="Đóng menu" onClick={() => setMobileOpen(false)}><X/></Button></div>
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Điều hướng chính">{nav.filter((item) => (item.roles as readonly Role[]).includes(role)).map((item) => { const Icon = item.icon; const active = item.href === "/" ? pathname === "/" : pathname === item.href || pathname.startsWith(item.href + "/"); return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}><Icon className="size-4 shrink-0"/>{item.label}</Link>; })}</nav>
-      <div className="border-t p-3"><p className="truncate px-3 text-sm font-medium">{user.name}</p><p className="truncate px-3 text-xs text-muted-foreground">{user.email}</p><Button className="mt-3 w-full justify-start" variant="ghost" onClick={async () => { await authClient.signOut(); setUser(null); router.push("/"); }}><LogOut className="size-4"/> Đăng xuất</Button></div>
-    </aside>
-    <div className="min-w-0"><header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:px-8"><div className="flex items-center gap-3"><Button variant="ghost" size="icon" className="lg:hidden" aria-label="Mở menu" onClick={() => setMobileOpen(true)}><Menu/></Button><span className="text-sm font-medium">{current?.label ?? "Material"}</span></div><Link href="/notifications" className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Thông báo"><Bell className="size-5"/></Link></header><main className="mx-auto max-w-7xl p-4 pb-12 md:p-8">{renderPage(pathname, role)}</main></div>
-  </div>;
+  return <SidebarProvider>
+    <AppSidebar
+      pathname={pathname}
+      role={role}
+      user={user}
+      onSignOut={async () => { await authClient.signOut(); setUser(null); router.push("/"); }}
+    />
+    <SidebarInset className="min-w-0">
+      <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:px-6">
+        <div className="flex min-w-0 items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <span className="truncate text-sm font-medium">{current?.label ?? "Material"}</span>
+        </div>
+        <Link href="/notifications" className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label="Thông báo"><Bell className="size-5"/></Link>
+      </header>
+      <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-12 md:p-8">{renderPage(pathname, role)}</main>
+    </SidebarInset>
+  </SidebarProvider>;
 }
 
 function renderPage(pathname: string, role: Role) {
