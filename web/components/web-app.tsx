@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Building2 } from "lucide-react";
+import { Bell, Eye, EyeOff, HardHat } from "lucide-react";
 import { toast } from "sonner";
 import { authClient, type AppUser, type Role } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Field } from "@/components/common";
 import { Dashboard, Orders, OrderDetail, OrderCreate, Projects, ProjectDetail, Reconcile, Reports, Notifications, Activity } from "@/components/operations";
 import { AdminCatalog, Budgets, Members } from "@/components/management";
 import { Docs } from "@/components/docs";
@@ -21,6 +22,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 function Login({ onLogin }: { onLogin: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   async function submit(event: React.FormEvent) {
@@ -44,7 +46,86 @@ function Login({ onLogin }: { onLogin: () => void }) {
       if (result.error) throw new Error(result.error.message ?? "Không thể đăng nhập với Google.");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Không thể mở đăng nhập Google."); setGoogleLoading(false); }
   }
-  return <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4"><Card className="w-full max-w-md"><CardHeader><div className="mb-3 flex size-11 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Building2 className="size-6"/></div><CardTitle className="text-xl">Quản lý vật tư công trình</CardTitle><p className="text-sm text-muted-foreground">Đăng nhập bằng tài khoản nội bộ.</p></CardHeader><CardContent><form onSubmit={submit} className="space-y-4"><Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" required/><Field label="Mật khẩu" type="password" value={password} onChange={setPassword} autoComplete="current-password" required/><Button className="w-full" type="submit" disabled={loading || googleLoading}>{loading ? "Đang đăng nhập…" : "Đăng nhập"}</Button></form><div className="my-4 flex items-center gap-3" aria-hidden="true"><Separator className="flex-1"/><span className="text-xs text-muted-foreground">hoặc</span><Separator className="flex-1"/></div><Button className="w-full" type="button" variant="outline" disabled={loading || googleLoading} onClick={() => void signInWithGoogle()}>{googleLoading ? "Đang mở Google…" : "Tiếp tục với Google"}</Button><Link href="/docs" className="mt-4 block text-center text-sm text-primary hover:underline">Xem tài liệu hệ thống</Link></CardContent></Card></div>;
+  return <main className="flex min-h-svh items-center justify-center bg-muted/35 px-4 py-10 sm:py-16">
+    <div className="w-full max-w-[520px]">
+      <Card className="gap-0 py-0 shadow-[0_24px_80px_-48px_rgba(0,0,0,0.45)]">
+        <CardHeader className="items-center px-6 pb-8 pt-14 text-center sm:px-14 sm:pt-16">
+          <div className="mb-6 flex size-12 items-center justify-center rounded-xl border bg-background text-foreground shadow-sm">
+            <HardHat className="size-6" aria-hidden="true" />
+          </div>
+          <CardTitle className="text-3xl font-semibold tracking-[-0.03em]">Đăng nhập</CardTitle>
+          <p className="mt-2 text-base text-muted-foreground">Tiếp tục vào hệ thống quản lý vật tư.</p>
+        </CardHeader>
+        <CardContent className="px-6 pb-12 sm:px-14 sm:pb-14">
+          <form onSubmit={submit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="login-email">Email</Label>
+              <Input
+                id="login-email"
+                className="h-10 px-3"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@company.com"
+                autoComplete="email"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="login-password">Mật khẩu</Label>
+              <div className="relative">
+                <Input
+                  id="login-password"
+                  className="h-10 px-3 pr-11"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Nhập mật khẩu"
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                >
+                  {showPassword ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
+                </button>
+              </div>
+            </div>
+            <Button className="h-10 w-full" type="submit" disabled={loading || googleLoading}>
+              {loading ? "Đang đăng nhập…" : "Đăng nhập"}
+            </Button>
+          </form>
+
+          <div className="my-7 flex items-center gap-4" aria-hidden="true">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">Hoặc tiếp tục với</span>
+            <Separator className="flex-1" />
+          </div>
+
+          <Button className="h-10 w-full" type="button" variant="outline" disabled={loading || googleLoading} onClick={() => void signInWithGoogle()}>
+            <GoogleMark />
+            {googleLoading ? "Đang mở Google…" : "Google"}
+          </Button>
+        </CardContent>
+      </Card>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Cần trợ giúp? <Link href="/docs" className="font-medium text-foreground underline-offset-4 hover:underline">Xem hướng dẫn sử dụng</Link>
+      </p>
+    </div>
+  </main>;
+}
+
+function GoogleMark() {
+  return <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.06H12v3.9h5.39a4.6 4.6 0 0 1-2 3.02v2.53h3.24c1.9-1.75 2.97-4.33 2.97-7.39Z" />
+    <path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.63-2.38l-3.24-2.53c-.9.6-2.05.96-3.39.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.61A10 10 0 0 0 12 22Z" />
+    <path fill="#FBBC05" d="M6.39 13.92A6.02 6.02 0 0 1 6.07 12c0-.67.12-1.32.32-1.92V7.47H3.04A10 10 0 0 0 2 12c0 1.61.38 3.14 1.04 4.53l3.35-2.61Z" />
+    <path fill="#EA4335" d="M12 5.95c1.47 0 2.79.5 3.82 1.5l2.87-2.87A9.63 9.63 0 0 0 12 2a10 10 0 0 0-8.96 5.47l3.35 2.61C7.18 7.71 9.39 5.95 12 5.95Z" />
+  </svg>;
 }
 
 export function WebApp() {
