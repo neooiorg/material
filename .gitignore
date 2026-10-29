@@ -15,7 +15,11 @@ node_modules/
 
 # next.js
 /.next/
+/web/.next/
 /out/
+
+# local browser automation artifacts
+/.playwright-cli/
 
 # production
 /build

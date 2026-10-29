@@ -1,11 +1,96 @@
 import { Stack, useLocalSearchParams } from "expo-router";
-import { Card, Divider, Text } from "@/components/ui";
+import { Card, Divider, InfoRow, Text, TruncatedText } from "@/components/ui";
 import { Screen, StateView } from "@/components/screen";
 import { StatusChip } from "@/components/status-chip";
+import { DataTable } from "@/components/data-table";
 import { OrderActions } from "@/components/order-actions";
 import { useApi } from "@/hooks/use-api";
 import { authClient, type AppUser } from "@/lib/auth-client";
 import { formatDateTime, formatNumber, formatVND, statusLabels } from "@/lib/format";
-type Order = { id: number; code: string; status: keyof typeof statusLabels; note?: string; rejectedReason?: string; total: string; createdAt: string; approvedAt?: string; deliveredAt?: string; projectName: string; creatorName: string; supplierName: string; items: { id: number; name: string; unit: string; group: string; qty: string; unitPrice: string; amount: string }[]; timeline: { id: number; summary: string; actorName: string; createdAt: string }[] };
-// @ts-expect-error Legacy sessions are normalized to the admin role by the API server.
-export default function Detail() { const { id } = useLocalSearchParams<{ id: string }>(); const query = useApi<Order>(`/api/orders/${id}`); const user = authClient.useSession().data?.user as AppUser | undefined; const order = query.data; const canApprove = !!order && order.status === "pending" && (user?.role === "director" || user?.role === "admin"); const canDeliver = !!order && order.status === "approved" && (user?.role === "supplier" || user?.role === "admin"); return <Screen><Stack.Screen options={{ title: order ? `Đơn ${order.code}` : "Chi tiết đơn" }} /><StateView loading={query.loading} error={query.error} retry={query.refresh}>{order && <><StatusChip status={order.status} /><Card><Card.Title title="Thông tin" /><Card.Content style={{ gap: 5 }}><Text selectable>Công trình: {order.projectName}</Text><Text selectable>Người tạo: {order.creatorName}</Text><Text selectable>Cửa hàng: {order.supplierName}</Text><Text selectable>Ngày tạo: {formatDateTime(order.createdAt)}</Text>{order.approvedAt && <Text selectable>Ngày duyệt: {formatDateTime(order.approvedAt)}</Text>}{order.deliveredAt && <Text selectable>Ngày giao: {formatDateTime(order.deliveredAt)}</Text>}</Card.Content></Card><Card><Card.Title title="Chi tiết vật tư" /><Card.Content style={{ gap: 10 }}>{order.items.map((item) => <Card key={item.id} mode="contained"><Card.Content><Text selectable variant="titleSmall">{item.name} · {item.group}</Text><Text selectable>{formatNumber(item.qty)} {item.unit} × {formatVND(item.unitPrice)}</Text><Text selectable>{formatVND(item.amount)}</Text></Card.Content></Card>)}<Divider /><Text selectable variant="titleMedium">Tổng cộng: {formatVND(order.total)}</Text></Card.Content></Card>{order.note && <Card><Card.Title title="Ghi chú" /><Card.Content><Text selectable>{order.note}</Text></Card.Content></Card>}{order.rejectedReason && <Card><Card.Title title="Lý do từ chối" /><Card.Content><Text selectable style={({ color: "#b91c1c" } as any)}>{order.rejectedReason}</Text></Card.Content></Card>}<Card><Card.Title title="Diễn biến đơn" /><Card.Content style={{ gap: 10 }}>{order.timeline.map((event) => <Text selectable key={event.id}>• {event.summary}{"\n"}  {event.actorName} · {formatDateTime(event.createdAt)}</Text>)}</Card.Content></Card>{(canApprove || canDeliver) && <OrderActions orderId={order.id} canApprove={canApprove} canDeliver={canDeliver} onDone={query.refresh} />}</>}</StateView></Screen>; }
+import { colors } from "@/theme";
+
+type Order = {
+  id: number;
+  code: string;
+  status: keyof typeof statusLabels;
+  note?: string;
+  rejectedReason?: string;
+  total: string;
+  createdAt: string;
+  approvedAt?: string;
+  deliveredAt?: string;
+  projectName: string;
+  creatorName: string;
+  supplierContact?: { name: string; phone: string } | null;
+  items: { id: number; name: string; unit: string; group: string; qty: string; unitPrice: string; amount: string }[];
+  timeline: { id: number; summary: string; actorName: string; createdAt: string }[];
+};
+
+export default function Detail() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const query = useApi<Order>(`/api/orders/${id}`);
+  const user = authClient.useSession().data?.user as AppUser | undefined;
+  const order = query.data;
+  const canApprove = !!order && order.status === "pending" && user?.role === "admin";
+
+  return (
+    <Screen>
+      <Stack.Screen options={{ title: order ? `Đơn ${order.code}` : "Chi tiết đơn" }} />
+      <StateView loading={query.loading} error={query.error} retry={query.refresh}>
+        {order && (
+          <>
+            <StatusChip status={order.status} />
+
+            <Card>
+              <Card.Title title="Thông tin" subtitle={order.code} />
+              <Card.Content>
+                <InfoRow label="Công trình" value={order.projectName} />
+                <InfoRow label="Người tạo" value={order.creatorName} />
+                <InfoRow label="Đơn vị liên hệ" value={order.supplierContact ? `${order.supplierContact.name} · ${order.supplierContact.phone}` : "Chưa chọn"} />
+                <InfoRow label="Ngày tạo" value={formatDateTime(order.createdAt)} />
+                {order.approvedAt ? <InfoRow label="Ngày duyệt" value={formatDateTime(order.approvedAt)} /> : null}
+                {order.deliveredAt ? <InfoRow label="Ngày giao (dữ liệu cũ)" value={formatDateTime(order.deliveredAt)} /> : null}
+              </Card.Content>
+            </Card>
+
+            <Card>
+              <Card.Title title="Chi tiết vật tư" />
+              <Card.Content style={{ gap: 10 }}>
+                <DataTable
+                  rows={order.items}
+                  searchPlaceholder="Tìm vật tư trong đơn"
+                  getSearchText={(item) => `${item.name} ${item.group} ${item.unit}`}
+                  pageSize={8}
+                  columns={[
+                    { key: "name", label: "Vật tư", width: 190, render: (item) => <><TruncatedText title="Vật tư" lines={2} variant="labelMedium">{item.name}</TruncatedText><TruncatedText title="Nhóm vật tư" variant="labelSmall" style={{ color: colors.textMuted }}>{item.group}</TruncatedText></> },
+                    { key: "qty", label: "Số lượng", width: 128, align: "right", render: (item) => `${formatNumber(item.qty)} ${item.unit}` },
+                    { key: "price", label: "Đơn giá", width: 142, align: "right", render: (item) => formatVND(item.unitPrice) },
+                    { key: "amount", label: "Thành tiền", width: 150, align: "right", render: (item) => formatVND(item.amount) },
+                  ]}
+                />
+                <Divider />
+                <InfoRow label="Tổng cộng" value={formatVND(order.total)} tone="primary" />
+              </Card.Content>
+            </Card>
+
+            {order.note ? <Card><Card.Title title="Ghi chú nội bộ" /><Card.Content><Text selectable>{order.note}</Text></Card.Content></Card> : null}
+            {order.rejectedReason ? <Card><Card.Title title="Lý do từ chối" /><Card.Content><Text selectable style={{ color: colors.danger }}>{order.rejectedReason}</Text></Card.Content></Card> : null}
+
+            <Card>
+              <Card.Title title="Diễn biến đơn" />
+              <Card.Content style={{ gap: 10 }}>
+                {order.timeline.map((event) => (
+                  <Text selectable key={event.id}>
+                    • {event.summary}{"\n"}  {event.actorName} · {formatDateTime(event.createdAt)}
+                  </Text>
+                ))}
+              </Card.Content>
+            </Card>
+
+            {canApprove ? <OrderActions orderId={order.id} canApprove={canApprove} onDone={query.refresh} /> : null}
+          </>
+        )}
+      </StateView>
+    </Screen>
+  );
+}

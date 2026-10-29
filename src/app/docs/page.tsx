@@ -47,7 +47,7 @@ const TOC: TocItem[] = [
   { id: "vai-tro", label: "Vai trò & phân quyền" },
   { id: "luong", label: "Luồng nghiệp vụ" },
   { id: "tinh-nang", label: "Tính năng chính" },
-  { id: "tai-khoan", label: "Tài khoản demo" },
+  { id: "tai-khoan", label: "Tài khoản quản trị" },
   { id: "faq", label: "Câu hỏi thường gặp" },
 ];
 
@@ -114,10 +114,10 @@ export default function DocsPage() {
               Nền tảng quản lý đặt vật tư công trình
             </h1>
             <p className="mt-3 max-w-2xl text-muted-foreground">
-              Thay thế quy trình thủ công (nhắn kế toán → gọi cửa hàng → nhập
-              tay → dò công nợ) bằng một luồng số hoá: đội thi công đặt vật tư,
-              giám đốc duyệt, cửa hàng giao, số liệu tự phân bổ và đối chiếu dự
-              toán — thống kê chi phí, công nợ cuối tháng.
+              App dành cho nội bộ công ty: Bộ phận thi công tạo nhu cầu vật tư,
+              Admin duyệt và quản lý dữ liệu, Kế toán theo dõi dự toán/thực tế.
+              Nhà cung cấp không đăng nhập app; hệ thống chỉ lưu danh bạ/Zalo để
+              gửi nội dung cần đặt.
             </p>
           </div>
 
@@ -142,8 +142,8 @@ export default function DocsPage() {
                 },
                 {
                   icon: Wallet,
-                  title: "Công nợ minh bạch",
-                  desc: "Tổng đã giao − đã thanh toán theo từng cửa hàng.",
+                  title: "Tổng hợp chi phí",
+                  desc: "Theo dõi dự toán, thực tế và chênh lệch theo công trình.",
                 },
               ].map((f) => (
                 <Card key={f.title}>
@@ -162,9 +162,8 @@ export default function DocsPage() {
           {/* Vai trò */}
           <Section id="vai-tro" title="Vai trò & phân quyền">
             <p className="text-sm text-muted-foreground">
-              Hệ thống có 4 vai trò. Mỗi vai trò đăng nhập sẽ thấy menu và chức
-              năng riêng — đây là lý do một tài khoản không nhìn thấy toàn bộ
-              tính năng.
+              Hệ thống có 3 vai trò nội bộ chính. Nhà cung cấp là liên hệ bên
+              ngoài, không có tài khoản đăng nhập app.
             </p>
             <Card>
               <CardContent className="p-0">
@@ -181,34 +180,33 @@ export default function DocsPage() {
                         <Badge>Quản trị (admin)</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        Quản lý công trình / vật tư / dự toán (thêm–sửa–xóa);
-                        xem nhật ký; xem toàn bộ.
+                        Quản lý công trình, vật tư, dự toán, danh bạ đơn vị
+                        cung cấp và thành viên; duyệt/từ chối đơn; xem toàn bộ.
                       </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>
-                        <Badge>Giám đốc (director)</Badge>
+                        <Badge variant="secondary">Bộ phận thi công (site)</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        Duyệt / từ chối đơn; xem đối chiếu, thống kê, công nợ;
-                        ghi nhận thanh toán; xem nhật ký.
+                        Tạo đơn đặt vật tư; theo dõi đơn của mình; xem tổng hợp
+                        công trình và gửi nội dung cần đặt qua Zalo khi đơn đã duyệt.
                       </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell>
-                        <Badge variant="secondary">Đội thi công (site)</Badge>
+                        <Badge variant="secondary">Kế toán (accountant)</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        Tạo đơn đặt vật tư (nhiều dòng); theo dõi đơn của mình;
-                        xem đối chiếu.
+                        Xem đơn, báo cáo, đối chiếu dự toán/thực tế, tổng hợp
+                        công trình và xuất CSV.
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell>
-                        <Badge variant="secondary">Cửa hàng (supplier)</Badge>
-                      </TableCell>
+                      <TableCell>Nhà cung cấp</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        Xem đơn đã duyệt cần giao; đánh dấu đã giao; xem công nợ.
+                        Không đăng nhập app. Chỉ là danh bạ tên/số Zalo để nội
+                        bộ liên hệ đặt vật tư.
                       </TableCell>
                     </TableRow>
                   </TableBody>
@@ -228,37 +226,38 @@ export default function DocsPage() {
           {/* Luồng nghiệp vụ */}
           <Section id="luong" title="Luồng nghiệp vụ">
             <p className="text-sm text-muted-foreground">
-              Vòng đời một đơn đặt vật tư đi qua 4 vai trò:
+              Vòng đời một đơn đặt vật tư đi qua nội bộ công ty; Zalo chỉ là
+              kênh liên hệ nhà cung cấp bên ngoài:
             </p>
             <div className="space-y-3">
               {[
                 {
                   n: 1,
                   icon: PackagePlus,
-                  role: "Đội thi công",
+                  role: "Bộ phận thi công",
                   title: "Tạo đơn",
-                  desc: "Chọn công trình, thêm các dòng vật tư (số lượng, đơn giá). Gửi đơn → tự sinh thông báo cho giám đốc và cửa hàng. Trạng thái: Chờ duyệt.",
+                  desc: "Chọn công trình, thêm vật tư cần đặt và đơn vị cung cấp liên quan. Trạng thái: Chờ duyệt.",
                 },
                 {
                   n: 2,
                   icon: CheckSquare,
-                  role: "Giám đốc",
+                  role: "Admin",
                   title: "Duyệt / Từ chối",
                   desc: "Xem chi tiết đơn và duyệt (hoặc từ chối kèm lý do). Khi duyệt, số lượng & tiền tự cộng dồn vào bảng tổng hợp thực tế của công trình.",
                 },
                 {
                   n: 3,
                   icon: Truck,
-                  role: "Cửa hàng",
-                  title: "Giao hàng",
-                  desc: "Xem đơn đã duyệt cần giao và đánh dấu Đã giao → công nợ của cửa hàng tăng tương ứng.",
+                  role: "Admin / Bộ phận thi công",
+                  title: "Gửi Zalo",
+                  desc: "Mở Zalo tới số liên hệ đã lưu; nội dung chỉ gồm mã đơn, công trình, vật tư, số lượng và đơn vị tính.",
                 },
                 {
                   n: 4,
                   icon: BarChart3,
-                  role: "Giám đốc / Quản trị",
+                  role: "Kế toán / Admin",
                   title: "Đối chiếu & thống kê",
-                  desc: "Đối chiếu dự toán vs thực tế (cảnh báo vượt), thống kê chi phí theo tháng, công nợ theo cửa hàng, xuất CSV.",
+                  desc: "Đối chiếu dự toán vs thực tế, thống kê chi phí, tổng hợp công trình và xuất CSV.",
                 },
               ].map((s) => (
                 <div key={s.n} className="flex gap-3">
@@ -301,8 +300,8 @@ export default function DocsPage() {
                 },
                 {
                   icon: BarChart3,
-                  title: "Thống kê & công nợ",
-                  desc: "Lọc theo tháng/công trình, chi phí thực tế, cơ cấu theo nhóm (biểu đồ), công nợ từng cửa hàng, xuất CSV.",
+                  title: "Thống kê & tổng hợp",
+                  desc: "Lọc theo tháng/công trình, chi phí thực tế, cơ cấu theo nhóm, vật tư còn cần đặt và xuất CSV.",
                 },
                 {
                   icon: Bell,
@@ -316,8 +315,8 @@ export default function DocsPage() {
                 },
                 {
                   icon: Wallet,
-                  title: "Ghi nhận thanh toán",
-                  desc: "Giám đốc/quản trị ghi khoản thanh toán cho cửa hàng để giảm công nợ.",
+                  title: "Danh bạ đơn vị cung cấp",
+                  desc: "Lưu tên và số Zalo để liên hệ đặt vật tư; không tạo tài khoản đăng nhập cho nhà cung cấp.",
                 },
               ].map((f) => (
                 <Card key={f.title}>
@@ -335,10 +334,11 @@ export default function DocsPage() {
             </div>
           </Section>
 
-          {/* Tài khoản demo */}
-          <Section id="tai-khoan" title="Tài khoản demo">
+          {/* Tài khoản quản trị */}
+          <Section id="tai-khoan" title="Tài khoản quản trị">
             <p className="text-sm text-muted-foreground">
-              Mật khẩu chung: <code className="rounded bg-muted px-1.5 py-0.5 font-mono">123456</code>. Trang đăng nhập có nút điền nhanh từng tài khoản.
+              Không còn tài khoản demo trong hệ thống. Seed hiện tại chỉ đảm
+              bảo email <code className="rounded bg-muted px-1.5 py-0.5 font-mono">nttantts@gmail.com</code> có quyền Admin.
             </p>
             <Card>
               <CardContent className="p-0">
@@ -350,23 +350,19 @@ export default function DocsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {[
-                      ["admin@demo.vn", "Quản trị"],
-                      ["director@demo.vn", "Giám đốc"],
-                      ["site@demo.vn", "Đội thi công"],
-                      ["supplier@demo.vn", "Cửa hàng"],
-                    ].map(([email, role]) => (
-                      <TableRow key={email}>
-                        <TableCell className="font-mono text-sm">
-                          {email}
-                        </TableCell>
-                        <TableCell>{role}</TableCell>
-                      </TableRow>
-                    ))}
+                    <TableRow>
+                      <TableCell className="font-mono text-sm">
+                        nttantts@gmail.com
+                      </TableCell>
+                      <TableCell>Quản trị</TableCell>
+                    </TableRow>
                   </TableBody>
                 </Table>
               </CardContent>
             </Card>
+            <p className="text-sm text-muted-foreground">
+              Chạy <code className="rounded bg-muted px-1.5 py-0.5 font-mono">pnpm db:seed</code> để cập nhật quyền. Nếu tài khoản chưa có, có thể đặt biến <code className="rounded bg-muted px-1.5 py-0.5 font-mono">SEED_ADMIN_PASSWORD</code> để tạo mật khẩu tạm.
+            </p>
           </Section>
 
           {/* FAQ */}
@@ -375,19 +371,19 @@ export default function DocsPage() {
               {[
                 {
                   q: "Vì sao tôi không thấy mục thêm/sửa/xóa dữ liệu?",
-                  a: "Quản lý danh mục (công trình, vật tư, dự toán) là quyền của vai trò Quản trị. Hãy đăng nhập admin@demo.vn để thấy các trang này.",
+                  a: "Quản lý danh mục (công trình, vật tư, dự toán) là quyền của vai trò Admin. Hãy liên hệ Admin để được cấp quyền phù hợp.",
                 },
                 {
                   q: "“Tự phân bổ” hoạt động thế nào?",
-                  a: "Khi giám đốc duyệt đơn, trong cùng một giao dịch, số lượng và tiền của từng dòng được cộng dồn vào bảng tổng hợp thực tế của công trình — không cần nhập tay.",
+                  a: "Khi Admin duyệt đơn, trong cùng một giao dịch, số lượng và tiền của từng dòng được cộng dồn vào bảng tổng hợp thực tế của công trình — không cần nhập tay.",
                 },
                 {
-                  q: "Công nợ được tính ra sao?",
-                  a: "Công nợ của một cửa hàng = tổng tiền các đơn đã giao − tổng các khoản đã thanh toán ghi nhận cho cửa hàng đó.",
+                  q: "Nhà cung cấp có tài khoản trong app không?",
+                  a: "Không. Nhà cung cấp chỉ là danh bạ liên hệ/Zalo để nội bộ gửi nội dung cần đặt.",
                 },
                 {
                   q: "Thông báo có gửi email/SMS không?",
-                  a: "Bản demo chỉ dùng thông báo trong ứng dụng (in-app), không tích hợp email/SMS thật.",
+                  a: "Hệ thống có thể gửi email bằng Resend nếu backend đã cấu hình RESEND_API_KEY; SMS không nằm trong phạm vi hiện tại.",
                 },
               ].map((f) => (
                 <Card key={f.q}>
@@ -408,7 +404,7 @@ export default function DocsPage() {
             <div>
               <div className="font-semibold">Sẵn sàng dùng thử?</div>
               <p className="text-sm text-muted-foreground">
-                Đăng nhập bằng tài khoản demo để trải nghiệm toàn bộ luồng.
+                Đăng nhập bằng tài khoản nội bộ đã được Admin mời/cấp quyền.
               </p>
             </div>
             <Link href="/login" className={cn(buttonVariants({ size: "lg" }))}>

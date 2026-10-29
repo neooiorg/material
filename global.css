@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@import "uniwind";
+@import "heroui-native/styles";
+
+@source "./node_modules/heroui-native/lib";
+
+/* ------------------------------------------------------------------ */
+/* Brand theme override — đồng bộ với mobile/theme.ts (token JS).       */
+/* Đổi biến màu HeroUI Native để mọi component dùng chung design system.*/
+/* ------------------------------------------------------------------ */
+@layer theme {
+  :root {
+    @variant light {
+      --background: #f7f8fa;
+
+      /* Thương hiệu / Brand accent (Google blue) */
+      --accent: #0b57d0;
+      --accent-foreground: #ffffff;
+      --focus: #0b57d0;
+
+      /* Ngữ nghĩa trạng thái / Status semantics */
+      --success: #188038;
+      --success-foreground: #ffffff;
+      --warning: #c26401;
+      --warning-foreground: #ffffff;
+      --danger: #c5221f;
+      --danger-foreground: #ffffff;
+
+      /* Đường viền / Borders */
+      --border: #e3e7ec;
+      --separator: #e3e7ec;
+    }
+
+    @variant dark {
+      /* Giữ brand nhất quán trên nền tối / Keep brand consistent in dark. */
+      --accent: #4c8dff;
+      --accent-foreground: #0b1524;
+      --focus: #4c8dff;
+    }
+  }
+
+  /* Bo góc mềm hơn cho card/overlay, input dịu lại. */
+  :root {
+    --radius: 0.75rem;
+    --field-radius: 0.75rem;
+  }
+}

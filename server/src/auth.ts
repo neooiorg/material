@@ -17,8 +17,12 @@ const googleSocialProvider =
       }
     : undefined;
 
+const dynamicAuthBaseURL = config.authAllowedHosts.length > 0
+  ? { allowedHosts: config.authAllowedHosts, protocol: "auto" as const }
+  : config.authUrl;
+
 export const auth = betterAuth({
-  baseURL: config.authUrl,
+  baseURL: dynamicAuthBaseURL,
   secret: config.authSecret,
   trustedOrigins: [
     ...config.corsOrigins,
@@ -54,5 +58,6 @@ export const auth = betterAuth({
     },
   },
   session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 },
+  ...(config.authAllowedHosts.length > 0 ? { advanced: { trustedProxyHeaders: true } } : {}),
   plugins: [expo()],
 });

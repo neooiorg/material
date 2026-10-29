@@ -2,7 +2,15 @@
   "expo": {
     "name": "Quản lý đặt vật tư",
     "slug": "material-management",
-    "version": "1.0.0",
+    "version": "1.0.4",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c12085e9-2bfe-4ef4-a3c1-5f6733d51b77",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "default",
     "scheme": "materialapp",
     "userInterfaceStyle": "automatic",
@@ -15,7 +23,9 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-updates",
+      "expo-web-browser"
     ],
     "ios": {
       "supportsTablet": true,

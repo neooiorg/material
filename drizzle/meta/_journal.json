@@ -15,6 +15,13 @@
       "when": 1788869124033,
       "tag": "0001_fancy_red_ghost",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790391600000,
+      "tag": "0002_add_accountant_role",
+      "breakpoints": true
     }
   ]
 }

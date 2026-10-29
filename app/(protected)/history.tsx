@@ -1,10 +1,25 @@
 import { useMemo, useState } from "react";
-import { Stack } from "expo-router";
-import { Button, Card, Searchbar, Text } from "@/components/ui";
-import { Screen, StateView, Empty } from "@/components/screen";
-import { SelectMenu } from "@/components/select-menu";
+import { router, Stack } from "expo-router";
+import { Button, TruncatedText } from "@/components/ui";
+import { DataTable } from "@/components/data-table";
+import { Empty, Screen, StateView } from "@/components/screen";
 import { useApi } from "@/hooks/use-api";
 import { formatDateTime } from "@/lib/format";
+
 type Row = { id: number; actorName: string; action: string; entityType: string; summary: string; createdAt: string };
 const labels: Record<string, string> = { order: "Đơn hàng", payment: "Thanh toán", project: "Công trình", material: "Vật tư", budget: "Dự toán" };
-export default function History() { const query = useApi<Row[]>("/api/activity"); const [search, setSearch] = useState(""); const [kind, setKind] = useState("all"); const [descending, setDescending] = useState(true); const rows = useMemo(() => (query.data ?? []).filter((row) => (kind === "all" || row.entityType === kind) && `${row.actorName} ${row.summary}`.toLowerCase().includes(search.toLowerCase())).sort((a, b) => (Date.parse(a.createdAt) - Date.parse(b.createdAt)) * (descending ? -1 : 1)), [query.data, search, kind, descending]); return <Screen><Stack.Screen options={{ title: "Nhật ký hoạt động" }} /><Searchbar placeholder="Tìm người thực hiện, nội dung" value={search} onChangeText={setSearch} /><SelectMenu value={kind} onChange={setKind} options={[{ value: "all", label: "Tất cả loại" }, ...Object.entries(labels).map(([value, label]) => ({ value, label }))]} /><Button mode="outlined" onPress={() => setDescending((value) => !value)}>Thời gian: {descending ? "mới nhất" : "cũ nhất"}</Button><StateView loading={query.loading} error={query.error} retry={query.refresh}>{rows.length === 0 ? <Empty>Chưa có hoạt động nào.</Empty> : rows.map((row) => <Card key={row.id}><Card.Title title={labels[row.entityType] ?? row.entityType} subtitle={`${row.actorName} · ${formatDateTime(row.createdAt)}`} /><Card.Content><Text selectable>{row.summary}</Text></Card.Content></Card>)}</StateView></Screen>; }
+
+export default function History() {
+  const query = useApi<Row[]>("/api/activity");
+  const [descending, setDescending] = useState(true);
+  const rows = useMemo(() => [...(query.data ?? [])].sort((a, b) => (Date.parse(a.createdAt) - Date.parse(b.createdAt)) * (descending ? -1 : 1)), [query.data, descending]);
+  return <Screen><Stack.Screen options={{ title: "Nhật ký hoạt động" }} />
+    <Button mode="outlined" onPress={() => setDescending((value) => !value)}>Thời gian: {descending ? "mới nhất" : "cũ nhất"}</Button>
+    <StateView loading={query.loading} error={query.error} retry={query.refresh}>{rows.length === 0 ? <Empty>Chưa có hoạt động nào.</Empty> : <DataTable
+      rows={rows} onPressRow={(row) => router.push(`/details/activity/${row.id}` as never)}
+      searchPlaceholder="Tìm người thực hiện, nội dung" getSearchText={(row) => `${row.actorName} ${row.action} ${row.summary} ${labels[row.entityType] ?? row.entityType}`}
+      filters={[{ key: "type", label: "Tất cả loại", options: Object.entries(labels).map(([value, label]) => ({ value, label })), matches: (row, value) => row.entityType === value }]}
+      columns={[{ key: "time", label: "Thời gian", width: 152, render: (row) => formatDateTime(row.createdAt) }, { key: "type", label: "Loại", width: 132, render: (row) => labels[row.entityType] ?? row.entityType }, { key: "actor", label: "Người thực hiện", width: 166, render: (row) => <TruncatedText title="Người thực hiện" lines={2} variant="labelMedium">{row.actorName}</TruncatedText> }, { key: "content", label: "Nội dung", width: 280, render: (row) => row.summary }]}
+    />}</StateView>
+  </Screen>;
+}

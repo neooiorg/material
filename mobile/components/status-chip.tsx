@@ -1,3 +1,10 @@
 import { Chip } from "@/components/ui";
 import { statusLabels } from "@/lib/format";
-export function StatusChip({ status }: { status: keyof typeof statusLabels }) { const color = status === "rejected" ? "#fee2e2" : status === "delivered" ? "#dbeafe" : status === "approved" ? "#dcfce7" : "#fef3c7"; return <Chip compact style={({ backgroundColor: color } as any)}>{statusLabels[status]}</Chip>; }
+import { statusColors } from "@/theme";
+
+export function StatusChip({ status }: { status: keyof typeof statusLabels }) {
+  const c = statusColors[status] ?? statusColors.pending;
+  return <Chip compact style={{ alignSelf: "flex-start", backgroundColor: c.bg }} labelStyle={{ color: c.fg }}>
+    ● {statusLabels[status]}
+  </Chip>;
+}

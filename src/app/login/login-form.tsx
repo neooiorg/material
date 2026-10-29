@@ -17,13 +17,6 @@ import {
 import { toast } from "sonner";
 import { Building2, Loader2 } from "lucide-react";
 
-const DEMO_ACCOUNTS = [
-  { role: "Quản trị", email: "admin@demo.vn" },
-  { role: "Giám đốc", email: "director@demo.vn" },
-  { role: "Đội thi công", email: "site@demo.vn" },
-  { role: "Cửa hàng", email: "supplier@demo.vn" },
-];
-
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -44,11 +37,6 @@ export function LoginForm() {
     toast.success("Đăng nhập thành công");
     router.push("/");
     router.refresh();
-  }
-
-  function fillDemo(demoEmail: string) {
-    setEmail(demoEmail);
-    setPassword("123456");
   }
 
   return (
@@ -95,25 +83,6 @@ export function LoginForm() {
             Đăng nhập
           </Button>
         </form>
-
-        <div className="mt-6 rounded-lg border bg-muted/40 p-3">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">
-            Tài khoản demo (mật khẩu: 123456) — bấm để điền nhanh
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {DEMO_ACCOUNTS.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                onClick={() => fillDemo(acc.email)}
-                className="rounded-md border bg-background px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent"
-              >
-                <div className="font-medium">{acc.role}</div>
-                <div className="text-muted-foreground">{acc.email}</div>
-              </button>
-            ))}
-          </div>
-        </div>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Chưa quen hệ thống?{" "}

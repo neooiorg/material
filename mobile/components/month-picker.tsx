@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { View } from "react-native";
 import { Button, Text } from "@/components/ui";
+import { colors } from "@/theme";
 
 type MonthPickerProps = {
   label?: string;
@@ -30,7 +31,7 @@ export function MonthPicker({ label = "Tháng", value, onChange }: MonthPickerPr
   }
 
   return <View style={{ gap: 6 }}>
-    <Text variant="labelMedium" style={{ color: "#3C4043" }}>{label}</Text>
+    <Text variant="labelMedium" style={{ color: colors.label }}>{label}</Text>
     <Button mode="outlined" icon="calendar" onPress={() => setOpen((shown) => !shown)}>{`Tháng ${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`}</Button>
     {open ? <DateTimePicker value={date} mode="date" display={isIos ? "inline" : "default"} onChange={selectMonth} /> : null}
   </View>;

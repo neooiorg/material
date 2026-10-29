@@ -26,12 +26,17 @@ function emailListFromEnv(value: string | undefined, fallback: string[] = []) {
   return [...new Set(source.map((email) => email.trim().toLowerCase()).filter(Boolean))];
 }
 
+function stringListFromEnv(value: string | undefined) {
+  return [...new Set((value ?? "").split(",").map((item) => item.trim()).filter(Boolean))];
+}
+
 export const config = {
   port: numberFromEnv(process.env.PORT, 4000),
   nodeEnv: process.env.NODE_ENV ?? "development",
   databaseUrl: process.env.DATABASE_URL,
   authSecret: process.env.BETTER_AUTH_SECRET,
   authUrl: process.env.BETTER_AUTH_URL ?? "http://localhost:4000",
+  authAllowedHosts: stringListFromEnv(process.env.BETTER_AUTH_ALLOWED_HOSTS),
   appScheme: process.env.APP_SCHEME ?? "materialapp",
   googleClientId: optionalStringFromEnv(process.env.GOOGLE_CLIENT_ID),
   googleClientSecret: optionalStringFromEnv(process.env.GOOGLE_CLIENT_SECRET),
@@ -44,7 +49,8 @@ export const config = {
   corsOrigins: (process.env.CORS_ORIGINS ?? "http://localhost:8081")
     .split(",")
     .map((value) => value.trim())
-    .filter(Boolean),
+    .filter(Boolean)
+    .concat(process.env.NODE_ENV === "production" ? [] : ["http://localhost:3000", "http://127.0.0.1:3000"]),
 };
 
 export function requireServerConfig() {

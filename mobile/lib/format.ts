@@ -4,5 +4,5 @@ export const formatNumber = (value: unknown, digits = 3) => new Intl.NumberForma
 export const formatPercent = (value: unknown) => `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(toNumber(value))}%`;
 export const formatDate = (value: unknown) => value ? new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(String(value))) : "—";
 export const formatDateTime = (value: unknown) => value ? new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(String(value))) : "—";
-export const roleLabels = { admin: "Quản trị", site: "Bộ phận thi công", supplier: "Cửa hàng vật liệu" } as const;
-export const statusLabels = { pending: "Chờ duyệt", approved: "Đã duyệt", rejected: "Từ chối", delivered: "Đã giao" } as const;
+export const roleLabels = { admin: "Quản trị", site: "Bộ phận thi công", accountant: "Kế toán" } as const;
+export const statusLabels = { pending: "Chờ duyệt", approved: "Đã duyệt", rejected: "Từ chối", delivered: "Đã hoàn tất (cũ)" } as const;

@@ -121,6 +121,7 @@ export function NotificationBell({
               <button
                 key={n.id}
                 onClick={() => handleItemClick(n)}
+                title={`${n.title}\n${n.message}`}
                 className={cn(
                   "flex w-full items-start gap-2 border-b px-3 py-2.5 text-left transition-colors hover:bg-accent last:border-0",
                   !n.isRead && "bg-primary/5"
@@ -142,14 +143,14 @@ export function NotificationBell({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-medium">
+                    <span className="min-w-0 truncate text-sm font-medium" title={n.title}>
                       {n.title}
                     </span>
                     {!n.isRead && (
                       <span className="size-1.5 shrink-0 rounded-full bg-primary" />
                     )}
                   </div>
-                  <p className="line-clamp-2 text-xs text-muted-foreground">
+                  <p className="line-clamp-2 text-xs text-muted-foreground" title={n.message}>
                     {n.message}
                   </p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">

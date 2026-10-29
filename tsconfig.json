@@ -13,6 +13,7 @@
     "app/**/*.tsx",
     "mobile/**/*.ts",
     "mobile/**/*.tsx",
+    "uniwind-types.d.ts",
     "expo-env.d.ts",
     ".expo/types/**/*.ts"
   ],

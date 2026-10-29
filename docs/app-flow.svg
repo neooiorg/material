@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="520" viewBox="0 0 980 520" role="img" aria-labelledby="title desc">
+  <title id="title">Luồng sử dụng Material App</title>
+  <desc id="desc">Sơ đồ vai trò Admin, Bộ phận thi công, Kế toán, hệ thống và nhà cung cấp Zalo.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+    <style>
+      .box{fill:#fff;stroke:#dbe4ef;stroke-width:2;rx:22}
+      .title{font:700 20px Arial,sans-serif;fill:#111827}
+      .text{font:500 15px Arial,sans-serif;fill:#475569}
+      .small{font:500 13px Arial,sans-serif;fill:#64748b}
+      .arrow{stroke:#2563eb;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .pill{fill:#dbeafe;stroke:#bfdbfe}
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <rect width="980" height="520" fill="url(#bg)"/>
+  <text x="40" y="52" class="title" font-size="26">Material App — luồng nội bộ</text>
+  <text x="40" y="80" class="text">Nhà cung cấp không đăng nhập app; chỉ là danh bạ/Zalo để nhận nội dung cần đặt.</text>
+
+  <rect x="40" y="125" width="210" height="120" class="box"/>
+  <text x="65" y="162" class="title">Bộ phận thi công</text>
+  <text x="65" y="194" class="text">Tạo đơn vật tư</text>
+  <text x="65" y="220" class="small">Chọn công trình, vật tư,</text>
+  <text x="65" y="240" class="small">đơn vị liên hệ Zalo</text>
+
+  <rect x="380" y="125" width="210" height="120" class="box"/>
+  <text x="405" y="162" class="title">Admin</text>
+  <text x="405" y="194" class="text">Duyệt / từ chối</text>
+  <text x="405" y="220" class="small">Quản lý danh mục, dự toán,</text>
+  <text x="405" y="240" class="small">thành viên và phân quyền</text>
+
+  <rect x="720" y="125" width="210" height="120" class="box"/>
+  <text x="745" y="162" class="title">Hệ thống</text>
+  <text x="745" y="194" class="text">Cập nhật thực tế</text>
+  <text x="745" y="220" class="small">Ghi nhận số lượng/chi phí,</text>
+  <text x="745" y="240" class="small">gửi thông báo email</text>
+
+  <rect x="40" y="330" width="210" height="120" class="box"/>
+  <text x="65" y="367" class="title">Nhà cung cấp</text>
+  <text x="65" y="399" class="text">Nhận qua Zalo</text>
+  <text x="65" y="425" class="small">Chỉ nhận mã đơn, công trình,</text>
+  <text x="65" y="445" class="small">vật tư, số lượng, đơn vị</text>
+
+  <rect x="380" y="330" width="210" height="120" class="box"/>
+  <text x="405" y="367" class="title">Kế toán</text>
+  <text x="405" y="399" class="text">Theo dõi chi phí</text>
+  <text x="405" y="425" class="small">Xem báo cáo, đối chiếu,</text>
+  <text x="405" y="445" class="small">tổng hợp công trình</text>
+
+  <rect x="720" y="330" width="210" height="120" class="box"/>
+  <text x="745" y="367" class="title">Báo cáo quản trị</text>
+  <text x="745" y="399" class="text">Dự toán vs thực tế</text>
+  <text x="745" y="425" class="small">Dashboard, CSV, lịch sử</text>
+  <text x="745" y="445" class="small">và vật tư còn cần đặt</text>
+
+  <path d="M250 185 H380" class="arrow"/>
+  <path d="M590 185 H720" class="arrow"/>
+  <path d="M825 245 V330" class="arrow"/>
+  <path d="M720 390 H590" class="arrow"/>
+  <path d="M380 390 H250" class="arrow"/>
+  <path d="M145 330 V245" class="arrow"/>
+
+  <rect x="292" y="158" width="56" height="36" class="pill" rx="18"/>
+  <text x="306" y="181" class="small" fill="#1d4ed8">Đơn</text>
+  <rect x="630" y="158" width="56" height="36" class="pill" rx="18"/>
+  <text x="643" y="181" class="small" fill="#1d4ed8">Duyệt</text>
+  <rect x="292" y="363" width="56" height="36" class="pill" rx="18"/>
+  <text x="304" y="386" class="small" fill="#1d4ed8">Zalo</text>
+</svg>

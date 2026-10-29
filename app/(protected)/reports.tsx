@@ -1,24 +1,57 @@
-import { useState, type ComponentProps } from "react";
+import { useState } from "react";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { fetch } from "expo/fetch";
-import { Stack } from "expo-router";
-import { Button, Card, Text, TextInput as UiTextInput } from "@/components/ui";
+import { router as expoRouter, Stack } from "expo-router";
+import { Button, Card, InfoRow, Text, TruncatedText } from "@/components/ui";
 import { Screen, StateView } from "@/components/screen";
 import { SelectMenu } from "@/components/select-menu";
-import { LegendChart } from "@/components/charts";
+import { BarChart, DonutChart } from "@/components/charts";
+import { DataTable } from "@/components/data-table";
 import { useApi } from "@/hooks/use-api";
-import { api, jsonBody } from "@/lib/api";
-import { authClient, type AppUser } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 import { formatNumber, formatVND } from "@/lib/format";
+import { fonts } from "@/theme";
 import { apiBaseUrl } from "@/lib/runtime-config";
 import { useNotice } from "@/components/snackbar";
 import { MonthPicker } from "@/components/month-picker";
-type Data = { month: string; label: string; projects: { id: number; code: string; name: string }[]; materialStats: { materialId: number; name: string; group: string; qty: number; unit: string; amount: number }[]; debts: { supplierId: string; name: string; delivered: number; paid: number; debt: number }[]; totalCost: number; totalDebt: number; groupData: { name: string; value: number }[] };
-function TextInput(props: ComponentProps<typeof UiTextInput>) {
-  if (props.label === "Tháng (YYYY-MM)") return <MonthPicker label="Tháng báo cáo" value={String(props.value ?? "")} onChange={props.onChangeText ?? (() => undefined)} />;
-  return <UiTextInput {...props} />;
+
+const router = expoRouter as unknown as { push: (href: string) => void };
+
+type Data = { month: string; label: string; projects: { id: number; code: string; name: string }[]; materialStats: { materialId: number; name: string; group: string; qty: number; unit: string; amount: number }[]; totalCost: number; groupData: { name: string; value: number }[] };
+
+export default function Reports() {
+  const now = new Date();
+  const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+  const [project, setProject] = useState("all");
+  const path = `/api/reports?month=${month}${project !== "all" ? `&projectId=${project}` : ""}`;
+  const query = useApi<Data>(path);
+  const notice = useNotice();
+
+  async function exportCsv() {
+    try {
+      if (!apiBaseUrl) throw new Error("EXPO_PUBLIC_API_URL chưa được cấu hình.");
+      const cookie = await authClient.getCookie();
+      const response = await fetch(`${apiBaseUrl}/api/reports/export?month=${month}${project !== "all" ? `&projectId=${project}` : ""}`, { credentials: process.env.EXPO_OS === "web" ? "include" : "omit", headers: cookie ? { Cookie: cookie } : undefined });
+      if (!response.ok) throw new Error("Không thể xuất báo cáo.");
+      const csv = await response.text();
+      const file = new File(Paths.cache, `thong-ke-${month}.csv`);
+      file.create({ overwrite: true });
+      file.write(csv);
+      await Sharing.shareAsync(file.uri, { mimeType: "text/csv" });
+    } catch (error) {
+      notice(error instanceof Error ? error.message : "Không thể xuất báo cáo.");
+    }
+  }
+
+  return <Screen><Stack.Screen options={{ title: "Thống kê chi phí" }} />
+    <MonthPicker label="Tháng báo cáo" value={month} onChange={setMonth} />
+    <StateView loading={query.loading} error={query.error} retry={query.refresh}>{query.data && <>
+      <SelectMenu value={project} onChange={setProject} options={[{ value: "all", label: "Tất cả công trình" }, ...query.data.projects.map((item) => ({ value: String(item.id), label: `${item.code} · ${item.name}` }))]} />
+      <Button mode="outlined" icon="download" onPress={exportCsv}>Xuất CSV</Button>
+      <Card><Card.Content><InfoRow label={`Chi phí đơn đã duyệt · ${query.data.label}`} value={formatVND(query.data.totalCost)} tone="info" /></Card.Content></Card>
+      {query.data.groupData.length > 0 && <Card><Card.Title title="Cơ cấu theo nhóm" /><Card.Content><DonutChart money centerLabel="Chi phí" data={query.data.groupData} /></Card.Content></Card>}
+      <Card><Card.Title title="Chi phí theo vật tư" /><Card.Content><DataTable rows={query.data.materialStats.map((row) => ({ ...row, id: row.materialId }))} onPressRow={(row) => router.push(`/details/material/${row.materialId}`)} searchPlaceholder="Tìm vật tư trong báo cáo" getSearchText={(row) => `${row.name} ${row.group} ${row.unit}`} filters={[{ key: "group", label: "Tất cả nhóm", options: [...new Set(query.data.materialStats.map((row) => row.group))].map((value) => ({ value, label: value })), matches: (row, value) => row.group === value }]} columns={[{ key: "name", label: "Vật tư", width: 190, render: (row) => <TruncatedText title="Vật tư" lines={2} variant="labelMedium">{row.name}</TruncatedText> }, { key: "group", label: "Nhóm", width: 140, render: (row) => row.group }, { key: "qty", label: "Số lượng", width: 134, align: "right", render: (row) => `${formatNumber(row.qty)} ${row.unit}` }, { key: "amount", label: "Chi phí", width: 148, align: "right", render: (row) => <TruncatedText title="Chi phí" lines={2} style={{ fontVariant: ["tabular-nums"], fontFamily: fonts.semibold, textAlign: "right" }}>{formatVND(row.amount)}</TruncatedText> }]}/></Card.Content></Card>
+    </>}</StateView>
+  </Screen>;
 }
-// @ts-expect-error Legacy sessions are normalized to the admin role by the API server.
-export default function Reports() { const now = new Date(); const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`); const [project, setProject] = useState("all"); const path = `/api/reports?month=${month}${project !== "all" ? `&projectId=${project}` : ""}`; const query = useApi<Data>(path); const notice = useNotice(); const user = authClient.useSession().data?.user as AppUser | undefined; async function exportCsv() { try { const base = apiBaseUrl; if (!base) throw new Error("EXPO_PUBLIC_API_URL chưa được cấu hình."); const cookie = await authClient.getCookie(); const response = await fetch(`${base}/api/reports/export?month=${month}${project !== "all" ? `&projectId=${project}` : ""}`, { headers: cookie ? { Cookie: cookie } : undefined }); const csv = await response.text(); const file = new File(Paths.cache, `thong-ke-${month}.csv`); file.create({ overwrite: true }); file.write(csv); await Sharing.shareAsync(file.uri, { mimeType: "text/csv" }); } catch (error) { notice(error instanceof Error ? error.message : "Không thể xuất CSV."); } } return <Screen><Stack.Screen options={{ title: "Thống kê & công nợ" }} /><TextInput label="Tháng (YYYY-MM)" value={month} onChangeText={setMonth} /><StateView loading={query.loading} error={query.error} retry={query.refresh}>{query.data && <><SelectMenu value={project} onChange={setProject} options={[{ value: "all", label: "Tất cả công trình" }, ...query.data.projects.map((item) => ({ value: String(item.id), label: `${item.code} · ${item.name}` }))]} /><Button mode="outlined" icon="download" onPress={exportCsv}>Xuất CSV</Button><Card><Card.Content><Text selectable>Chi phí tháng {query.data.label}: {formatVND(query.data.totalCost)}</Text><Text selectable>Công nợ toàn thời gian: {formatVND(query.data.totalDebt)}</Text></Card.Content></Card>{query.data.groupData.length > 0 && <Card><Card.Title title="Cơ cấu theo nhóm" /><Card.Content><LegendChart data={query.data.groupData} /></Card.Content></Card>}<Card><Card.Title title="Chi phí theo vật tư" /><Card.Content style={{ gap: 8 }}>{query.data.materialStats.map((row) => <Text selectable key={row.materialId}>{row.name} · {formatNumber(row.qty)} {row.unit} — {formatVND(row.amount)}</Text>)}</Card.Content></Card><Card><Card.Title title="Công nợ theo cửa hàng" /><Card.Content style={{ gap: 10 }}>{query.data.debts.map((row) => <Text selectable key={row.supplierId}>{row.name}{"\n"}Đã giao {formatVND(row.delivered)} · Đã trả {formatVND(row.paid)} · Còn nợ {formatVND(row.debt)}</Text>)}{(user?.role === "admin" || user?.role === "director") && <PaymentForm debts={query.data.debts} done={query.refresh} />}</Card.Content></Card></>}</StateView></Screen>; }
-function PaymentForm({ debts, done }: { debts: Data["debts"]; done: () => void }) { const notice = useNotice(); const [supplierId, setSupplierId] = useState(debts[0]?.supplierId ?? ""); const [amount, setAmount] = useState(""); const [note, setNote] = useState(""); async function save() { try { await api("/api/payments", { method: "POST", ...jsonBody({ supplierId, amount: Number(amount), note }) }); setAmount(""); setNote(""); notice("Đã ghi nhận thanh toán."); done(); } catch (error) { notice(error instanceof Error ? error.message : "Không thể ghi nhận."); } } return <Card mode="contained"><Card.Title title="Ghi nhận thanh toán" /><Card.Content style={{ gap: 8 }}><SelectMenu value={supplierId} onChange={setSupplierId} options={debts.map((item) => ({ value: item.supplierId, label: item.name }))} /><TextInput label="Số tiền" keyboardType="decimal-pad" value={amount} onChangeText={setAmount} /><TextInput label="Ghi chú" value={note} onChangeText={setNote} /><Button mode="contained" onPress={save}>Ghi nhận</Button></Card.Content></Card>; }

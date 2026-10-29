@@ -108,7 +108,7 @@ export function AppSidebar({
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            title={collapsed ? item.label : undefined}
+            title={item.label}
             className={cn(
               "flex items-center gap-2.5 rounded-lg text-sm font-medium transition-colors",
               collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2",
@@ -118,7 +118,7 @@ export function AppSidebar({
             )}
           >
             <Icon className="size-4.5 shrink-0" />
-            {!collapsed && <span className="truncate">{item.label}</span>}
+            {!collapsed && <span className="min-w-0 truncate">{item.label}</span>}
           </Link>
         );
       })}
