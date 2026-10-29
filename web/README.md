@@ -26,7 +26,7 @@ pnpm web:build
 pnpm --dir server typecheck
 ```
 
-Dockerfile ở `web/Dockerfile` dùng build context là **thư mục gốc repository**. Trong Dokploy, đặt `MATERIAL_API_URL` cho service web là URL backend mà container có thể truy cập, ví dụ URL nội bộ trong cùng Docker network hoặc URL HTTPS public của API. Expose web cổng 3000. Thêm public origin của web vào `CORS_ORIGINS` của backend để Better Auth chấp nhận đăng nhập; cho môi trường local, `localhost:3000` và `127.0.0.1:3000` đã được cho phép. Cấu hình `APP_URL` thành URL web khi muốn email mời thành viên trỏ đến web.
+Dockerfile ở `web/Dockerfile` dùng build context là **thư mục gốc repository**. Trong Dokploy, đặt `MATERIAL_API_URL` cho service web là URL nội bộ `http://material-api-4fsd6i:4000`. Expose web cổng 3000. Production mặc định dùng public origin `https://material.apps.neooi.com`; có thể ghi đè bằng `MATERIAL_WEB_URL` nếu đổi domain. Thêm public origin của web vào `CORS_ORIGINS` của backend để Better Auth chấp nhận đăng nhập; cho môi trường local, `localhost:3000` và `127.0.0.1:3000` đã được cho phép. Cấu hình `APP_URL` thành URL web khi muốn email mời thành viên trỏ đến web.
 
 Production mặc định tin cậy `material.apps.neooi.com` và cho phép origin HTTPS này. Có thể ghi đè bằng `BETTER_AUTH_ALLOWED_HOSTS` và `CORS_ORIGINS` nếu đổi domain. Better Auth dùng hostname đã được allowlist để tạo callback; proxy web tự ghi đè `X-Forwarded-Host` và `X-Forwarded-Proto` và không chuyển tiếp hai header này từ trình duyệt.
 

@@ -21,8 +21,11 @@ async function forward(request: NextRequest, context: Context) {
 
   const headers = new Headers(request.headers);
   for (const name of ["host", "connection", "content-length", "accept-encoding", "x-forwarded-host", "x-forwarded-proto"]) headers.delete(name);
-  headers.set("x-forwarded-host", request.nextUrl.host);
-  headers.set("x-forwarded-proto", request.nextUrl.protocol.replace(":", ""));
+  const publicOrigin = process.env.MATERIAL_WEB_URL?.trim()
+    || (process.env.NODE_ENV === "production" ? "https://material.apps.neooi.com" : request.nextUrl.origin);
+  const publicUrl = new URL(publicOrigin);
+  headers.set("x-forwarded-host", publicUrl.host);
+  headers.set("x-forwarded-proto", publicUrl.protocol.replace(":", ""));
   try {
     const upstream = await fetch(target, {
       method: request.method,
