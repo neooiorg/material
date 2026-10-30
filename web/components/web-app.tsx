@@ -157,25 +157,25 @@ function Login({ onLogin }: { onLogin: () => void }) {
           </Button>
 
           {testAccounts?.accounts.length ? <section className="mt-7 rounded-xl border bg-muted/35 p-4" aria-labelledby="test-accounts-title">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 id="test-accounts-title" className="text-sm font-semibold">Tài khoản thử nghiệm</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Chọn vai trò để đăng nhập một chạm trong giai đoạn kiểm thử.</p>
+                <Badge variant="secondary">Test only</Badge>
               </div>
-              <Badge variant="secondary">Test only</Badge>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Chọn vai trò để đăng nhập một chạm trong giai đoạn kiểm thử.</p>
             </div>
             <div className="mt-4 space-y-2">
               {testAccounts.accounts.map((account) => <Button
                 key={account.email}
                 type="button"
                 variant="outline"
-                className="h-auto w-full justify-between gap-3 bg-background px-3 py-2.5 text-left"
+                className="h-auto min-h-16 w-full justify-between gap-3 bg-background px-3 py-2.5 text-left sm:h-auto"
                 disabled={loading || googleLoading || Boolean(testLoginEmail)}
                 onClick={() => void loginWithCredentials(account.email, testAccounts.password)}
               >
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium">{testRoleLabels[account.role]}</span>
-                  <span className="block truncate text-xs font-normal text-muted-foreground">{account.email}</span>
+                <span className="flex min-w-0 flex-col items-start">
+                  <span className="block text-sm font-medium leading-5">{testRoleLabels[account.role]}</span>
+                  <span className="block max-w-full truncate text-xs font-normal leading-4 text-muted-foreground">{account.email}</span>
                 </span>
                 <span className="shrink-0 text-xs font-medium">{testLoginEmail === account.email ? "Đang vào…" : "Đăng nhập"}</span>
               </Button>)}
