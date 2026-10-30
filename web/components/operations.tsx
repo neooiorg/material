@@ -180,9 +180,37 @@ export function Reconcile() {
 
 type ReportData = { month: string; label: string; projects: Project[]; materialStats: { materialId: number; name: string; group: string; unit: string; qty: number; amount: number }[]; totalCost: number; groupData: { name: string; value: number }[] };
 export function Reports() {
-  const now = new Date(); const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`); const [project, setProject] = useState("all"); const path = `/api/reports?month=${month}${project !== "all" ? `&projectId=${project}` : ""}`; const query = useApi<ReportData>(path); const data = query.data;
+  const now = new Date();
+  const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+  const [project, setProject] = useState("all");
+  const path = `/api/reports?month=${month}${project !== "all" ? `&projectId=${project}` : ""}`;
+  const query = useApi<ReportData>(path);
+  const data = query.data;
   async function download() { try { const response = await fetch(`/api/reports/export?month=${month}${project !== "all" ? `&projectId=${project}` : ""}`); if (!response.ok) throw new Error("Không thể xuất CSV."); const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `thong-ke-${month}.csv`; a.click(); URL.revokeObjectURL(url); } catch (e) { toast.error(e instanceof Error ? e.message : "Không thể xuất CSV."); } }
-  return <><PageTitle title="Thống kê chi phí" description="Chi phí vật tư của các đơn đã xác nhận nhận hàng." action={<Button variant="outline" onClick={() => void download()}>Xuất CSV</Button>}/><div className="mb-5 grid max-w-xl gap-4 sm:grid-cols-2"><Field label="Tháng" type="month" value={month} onChange={setMonth}/><NativeSelect label="Công trình" value={project} onChange={setProject} options={[{ value: "all", label: "Tất cả công trình" }, ...(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))]}/></div><DataState loading={query.loading} error={query.error} retry={query.refresh}>{data && <><Card className="mb-5"><CardContent className="py-5"><p className="text-sm text-muted-foreground">Chi phí đã nhận tháng {data.label}</p><strong className="text-2xl">{money(data.totalCost)}</strong></CardContent></Card><div className="mb-5 grid gap-5 md:grid-cols-2"><Card><CardHeader><CardTitle>Theo nhóm vật tư</CardTitle></CardHeader><CardContent className="space-y-3">{data.groupData.length ? data.groupData.map((g) => <div key={g.name}><div className="flex justify-between gap-2 text-sm"><span>{g.name}</span><span>{money(g.value)}</span></div><div className="mt-1 h-2 rounded bg-muted"><div className="h-2 rounded bg-primary" style={{ width: `${data.totalCost ? g.value / data.totalCost * 100 : 0}%` }}/></div></div>) : <p className="text-sm text-muted-foreground">Chưa có vật tư được xác nhận trong kỳ.</p>}</CardContent></Card></div><DataGrid rows={data.materialStats} search="Tìm vật tư" searchText={(r) => `${r.name} ${r.group}`} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "group", label: "Nhóm", accessor: (r) => r.group, filter: { type: "select" }, render: (r) => r.group }, { id: "qty", label: "Số lượng", accessor: (r) => r.qty, filter: { type: "number" }, render: (r) => `${number(r.qty)} ${r.unit}` }, { id: "amount", label: "Chi phí", accessor: (r) => r.amount, filter: { type: "number" }, render: (r) => money(r.amount) }]}/></>}</DataState></>;
+  return <div className="mx-auto w-full max-w-5xl">
+    <PageTitle title="Thống kê chi phí" description="Chi phí vật tư của các đơn đã xác nhận nhận hàng." action={<Button variant="outline" onClick={() => void download()}>Xuất CSV</Button>}/>
+    <div className="mb-6 grid max-w-2xl gap-4 sm:grid-cols-2">
+      <Field label="Tháng" type="month" value={month} onChange={setMonth}/>
+      <NativeSelect label="Công trình" value={project} onChange={setProject} options={[{ value: "all", label: "Tất cả công trình" }, ...(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))]}/>
+    </div>
+    <DataState loading={query.loading} error={query.error} retry={query.refresh}>
+      {data && <>
+        <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.3fr)]">
+          <Card>
+            <CardContent className="flex h-full min-h-36 flex-col justify-center py-6">
+              <p className="text-sm text-muted-foreground">Chi phí đã nhận tháng {data.label}</p>
+              <strong className="mt-2 text-3xl tracking-tight">{money(data.totalCost)}</strong>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Theo nhóm vật tư</CardTitle></CardHeader>
+            <CardContent className="space-y-3">{data.groupData.length ? data.groupData.map((g) => <div key={g.name}><div className="flex justify-between gap-2 text-sm"><span>{g.name}</span><span>{money(g.value)}</span></div><div className="mt-1 h-2 rounded bg-muted"><div className="h-2 rounded bg-primary" style={{ width: `${data.totalCost ? g.value / data.totalCost * 100 : 0}%` }}/></div></div>) : <p className="text-sm text-muted-foreground">Chưa có vật tư được xác nhận trong kỳ.</p>}</CardContent>
+          </Card>
+        </div>
+        <DataGrid rows={data.materialStats} search="Tìm vật tư" searchText={(r) => `${r.name} ${r.group}`} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "group", label: "Nhóm", accessor: (r) => r.group, filter: { type: "select" }, render: (r) => r.group }, { id: "qty", label: "Số lượng", accessor: (r) => r.qty, filter: { type: "number" }, render: (r) => `${number(r.qty)} ${r.unit}` }, { id: "amount", label: "Chi phí", accessor: (r) => r.amount, filter: { type: "number" }, render: (r) => money(r.amount) }]}/>
+      </>}
+    </DataState>
+  </div>;
 }
 
 type Notification = { id: number; title: string; message: string; orderId: number | null; isRead: boolean; createdAt: string };

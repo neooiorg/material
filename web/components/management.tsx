@@ -4,11 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { api, jsonBody } from "@/lib/api";
-import { money, number } from "@/lib/format";
+import { date, money, number } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmButton, DataGrid, DataState, Field, NativeSelect, PageTitle, Status, useApi } from "@/components/common";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type CatalogKind = "projects" | "materials" | "supplier-contacts";
 type CatalogRow = { id: number; code?: string; name: string; address?: string | null; status?: string; unit?: string; group?: string; phone?: string; defaultSupplierContactId?: number | null };
@@ -79,11 +80,71 @@ export function Budgets() {
 }
 
 type Member = { id: string; name: string; email: string; role: string; createdAt: string };
+type AccessRequest = { id: string; userId: string; name: string; email: string; requestedRole: string; note: string | null; createdAt: string };
+
+function AccessRequestsPanel({ onApproved }: { onApproved: () => void }) {
+  const query = useApi<AccessRequest[]>("/api/access-requests");
+  const [roles, setRoles] = useState<Record<string, string>>({});
+  const [processing, setProcessing] = useState("");
+
+  async function approve(request: AccessRequest) {
+    setProcessing(request.id);
+    try {
+      const role = roles[request.id] ?? (request.requestedRole === "accountant" ? "accountant" : "site");
+      await api(`/api/access-requests/${request.id}/approve`, { method: "POST", ...jsonBody({ role }) });
+      toast.success(`Đã cấp quyền cho ${request.name}.`);
+      query.refresh();
+      onApproved();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Không thể cấp quyền."); }
+    finally { setProcessing(""); }
+  }
+
+  async function reject(request: AccessRequest) {
+    setProcessing(request.id);
+    try {
+      await api(`/api/access-requests/${request.id}/reject`, { method: "POST" });
+      toast.success(`Đã từ chối yêu cầu của ${request.name}.`);
+      query.refresh();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Không thể từ chối yêu cầu."); }
+    finally { setProcessing(""); }
+  }
+
+  return <Card className="mb-6">
+    <CardHeader>
+      <CardTitle>Yêu cầu phân quyền</CardTitle>
+      <p className="text-sm text-muted-foreground">Tài khoản mới đăng nhập đang chờ Admin xác nhận vai trò.</p>
+    </CardHeader>
+    <CardContent>
+      <DataState loading={query.loading} error={query.error} retry={query.refresh}>
+        {(query.data?.length ?? 0) === 0 ? <p className="text-sm text-muted-foreground">Không có yêu cầu nào đang chờ.</p> : <DataGrid
+          rows={query.data ?? []}
+          search="Tìm tên hoặc email"
+          searchText={(request) => `${request.name} ${request.email} ${request.note ?? ""}`}
+          columns={[
+            { id: "name", label: "Tài khoản", accessor: (request) => request.name, filter: { type: "text" }, render: (request) => <div><p className="font-medium">{request.name}</p><p className="text-xs text-muted-foreground">{request.email}</p></div> },
+            { id: "requestedRole", label: "Đề xuất", accessor: (request) => request.requestedRole, filter: { type: "select", options: [{ value: "site", label: "Thi công" }, { value: "accountant", label: "Kế toán" }] }, render: (request) => request.requestedRole === "accountant" ? "Kế toán" : "Bộ phận thi công" },
+            { id: "note", label: "Ghi chú", accessor: (request) => request.note ?? "", filter: { type: "text" }, render: (request) => request.note || "—" },
+            { id: "createdAt", label: "Gửi lúc", accessor: (request) => request.createdAt, filter: { type: "date" }, render: (request) => date(request.createdAt) },
+            { id: "actions", label: "Cấp quyền", sortable: false, hideable: false, exportable: false, render: (request) => <div className="flex min-w-64 flex-wrap items-center gap-2">
+              <Select value={roles[request.id] ?? (request.requestedRole === "accountant" ? "accountant" : "site")} onValueChange={(value) => setRoles((current) => ({ ...current, [request.id]: value ?? "site" }))}>
+                <SelectTrigger className="w-40" aria-label={`Vai trò cấp cho ${request.name}`}><SelectValue>{({ site: "Thi công", accountant: "Kế toán", admin: "Quản trị" } as Record<string, string>)[roles[request.id] ?? (request.requestedRole === "accountant" ? "accountant" : "site")]}</SelectValue></SelectTrigger>
+                <SelectContent><SelectItem value="site">Thi công</SelectItem><SelectItem value="accountant">Kế toán</SelectItem><SelectItem value="admin">Quản trị</SelectItem></SelectContent>
+              </Select>
+              <Button size="sm" disabled={processing === request.id} onClick={() => void approve(request)}>Duyệt</Button>
+              <Button size="sm" variant="outline" disabled={processing === request.id} onClick={() => void reject(request)}>Từ chối</Button>
+            </div> },
+          ]}
+        />}
+      </DataState>
+    </CardContent>
+  </Card>;
+}
+
 export function Members() {
   const query = useApi<Member[]>("/api/members"); const [editing, setEditing] = useState<string | null>(null); const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [role, setRole] = useState("site"); const [saving, setSaving] = useState(false); const [invitation, setInvitation] = useState("");
   function edit(m: Member) { setEditing(m.id); setName(m.name); setEmail(m.email); setRole(m.role); setInvitation(""); }
   function reset() { setEditing(null); setName(""); setEmail(""); setRole("site"); }
   async function save(event: React.FormEvent) { event.preventDefault(); setSaving(true); try { const result = await api<{ temporaryPassword?: string; emailSent?: boolean; emailWarning?: string }>(editing ? `/api/members/${editing}` : "/api/members/invite", { method: editing ? "PATCH" : "POST", ...jsonBody({ name, email, role }) }); if (!editing && !result.emailSent && result.temporaryPassword) setInvitation(`Email chưa gửi được. Mật khẩu tạm của ${email}: ${result.temporaryPassword}. Hãy lưu và gửi riêng cho thành viên.`); else setInvitation(""); toast.success(editing ? "Đã cập nhật thành viên." : "Đã mời thành viên."); reset(); query.refresh(); } catch (e) { toast.error(e instanceof Error ? e.message : "Không thể lưu."); } finally { setSaving(false); } }
   async function remove(m: Member) { try { await api(`/api/members/${m.id}`, { method: "DELETE" }); query.refresh(); } catch (e) { toast.error(e instanceof Error ? e.message : "Không thể xóa."); } }
-  return <><PageTitle title="Thành viên" description="Mời và phân quyền nhân sự nội bộ."/><Card className="mb-6"><CardHeader><CardTitle>{editing ? "Cập nhật thành viên" : "Mời thành viên"}</CardTitle></CardHeader><CardContent><form onSubmit={save} className="grid gap-4 sm:grid-cols-4"><Field label="Họ tên" value={name} onChange={setName} required/><Field label="Email" type="email" value={email} onChange={setEmail} required/><NativeSelect label="Vai trò" value={role} onChange={setRole} options={[{ value: "site", label: "Bộ phận thi công" }, { value: "accountant", label: "Kế toán" }, { value: "admin", label: "Quản trị" }]}/><div className="flex items-end gap-2"><Button type="submit" disabled={saving}>{saving ? "Đang lưu…" : editing ? "Lưu" : "Gửi lời mời"}</Button>{editing && <Button type="button" variant="outline" onClick={reset}>Hủy</Button>}</div></form></CardContent></Card>{invitation && <p role="status" className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{invitation}</p>}<DataState loading={query.loading} error={query.error} retry={query.refresh}><DataGrid rows={query.data ?? []} search="Tìm thành viên" searchText={(m) => `${m.name} ${m.email} ${m.role}`} columns={[{ id: "name", label: "Họ tên", accessor: (m) => m.name, filter: { type: "text" }, render: (m) => m.name }, { id: "email", label: "Email", accessor: (m) => m.email, filter: { type: "text" }, render: (m) => m.email }, { id: "role", label: "Vai trò", accessor: (m) => m.role, filter: { type: "select", options: [{ value: "site", label: "Thi công" }, { value: "accountant", label: "Kế toán" }, { value: "admin", label: "Quản trị" }] }, render: (m) => m.role === "site" ? "Thi công" : m.role === "admin" ? "Quản trị" : "Kế toán" }, { id: "actions", label: "Thao tác", sortable: false, hideable: false, exportable: false, render: (m) => <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => edit(m)}>Sửa</Button><ConfirmButton title={`Xóa thành viên ${m.name}?`} description="Tài khoản và toàn bộ phiên đăng nhập của thành viên sẽ bị xóa." onConfirm={() => remove(m)}/></div> }]}/></DataState></>;
+  return <><PageTitle title="Thành viên" description="Duyệt tài khoản mới, mời và phân quyền nhân sự nội bộ."/><AccessRequestsPanel onApproved={query.refresh}/><Card className="mb-6"><CardHeader><CardTitle>{editing ? "Cập nhật thành viên" : "Mời thành viên"}</CardTitle></CardHeader><CardContent><form onSubmit={save} className="grid gap-4 sm:grid-cols-4"><Field label="Họ tên" value={name} onChange={setName} required/><Field label="Email" type="email" value={email} onChange={setEmail} required/><NativeSelect label="Vai trò" value={role} onChange={setRole} options={[{ value: "site", label: "Bộ phận thi công" }, { value: "accountant", label: "Kế toán" }, { value: "admin", label: "Quản trị" }]}/><div className="flex items-end gap-2"><Button type="submit" disabled={saving}>{saving ? "Đang lưu…" : editing ? "Lưu" : "Gửi lời mời"}</Button>{editing && <Button type="button" variant="outline" onClick={reset}>Hủy</Button>}</div></form></CardContent></Card>{invitation && <p role="status" className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{invitation}</p>}<DataState loading={query.loading} error={query.error} retry={query.refresh}><DataGrid rows={query.data ?? []} search="Tìm thành viên" searchText={(m) => `${m.name} ${m.email} ${m.role}`} columns={[{ id: "name", label: "Họ tên", accessor: (m) => m.name, filter: { type: "text" }, render: (m) => m.name }, { id: "email", label: "Email", accessor: (m) => m.email, filter: { type: "text" }, render: (m) => m.email }, { id: "role", label: "Vai trò", accessor: (m) => m.role, filter: { type: "select", options: [{ value: "site", label: "Thi công" }, { value: "accountant", label: "Kế toán" }, { value: "admin", label: "Quản trị" }] }, render: (m) => m.role === "site" ? "Thi công" : m.role === "admin" ? "Quản trị" : "Kế toán" }, { id: "actions", label: "Thao tác", sortable: false, hideable: false, exportable: false, render: (m) => <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => edit(m)}>Sửa</Button><ConfirmButton title={`Xóa thành viên ${m.name}?`} description="Tài khoản và toàn bộ phiên đăng nhập của thành viên sẽ bị xóa." onConfirm={() => remove(m)}/></div> }]}/></DataState></>;
 }

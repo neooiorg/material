@@ -10,7 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export const roleEnum = pgEnum("role", ["admin", "director", "site", "supplier", "accountant"]);
+export const roleEnum = pgEnum("role", ["admin", "director", "site", "supplier", "accountant", "pending"]);
 export const projectStatusEnum = pgEnum("project_status", ["active", "paused", "completed"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "approved", "rejected", "delivered"]);
 
@@ -20,7 +20,7 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
-  role: roleEnum("role").notNull().default("site"),
+  role: roleEnum("role").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -133,6 +133,18 @@ export const notifications = pgTable("notifications", {
   orderId: integer("order_id").references(() => orders.id, { onDelete: "cascade" }),
   isRead: boolean("is_read").notNull().default(false), createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const accessRequests = pgTable("access_requests", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  requestedRole: text("requested_role").notNull().default("site"),
+  note: text("note"),
+  status: text("status").notNull().default("pending"),
+  reviewedById: text("reviewed_by_id").references(() => user.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("access_requests_user_id_uq").on(table.userId)]);
 
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(), supplierId: text("supplier_id").notNull().references(() => user.id, { onDelete: "cascade" }),

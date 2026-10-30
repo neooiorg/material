@@ -7,6 +7,10 @@ export const apiRouter = Router();
 apiRouter.use(requireUser);
 
 apiRouter.get("/session", api.session);
+apiRouter.get("/access-request/me", api.ownAccessRequest);
+apiRouter.post("/access-request", api.accessRequestSubmit);
+apiRouter.use(requireRoles("admin", "site", "accountant"));
+
 apiRouter.get("/dashboard", api.dashboard);
 apiRouter.get("/orders", api.orderList);
 apiRouter.post("/orders", api.orderCreate);
@@ -49,3 +53,6 @@ apiRouter.get("/members", requireRoles("admin"), api.memberList);
 apiRouter.post("/members/invite", requireRoles("admin"), api.memberInvite);
 apiRouter.patch("/members/:id", requireRoles("admin"), api.memberUpdate);
 apiRouter.delete("/members/:id", requireRoles("admin"), api.memberDelete);
+apiRouter.get("/access-requests", requireRoles("admin"), api.accessRequestList);
+apiRouter.post("/access-requests/:id/approve", requireRoles("admin"), api.accessRequestApprove);
+apiRouter.post("/access-requests/:id/reject", requireRoles("admin"), api.accessRequestReject);

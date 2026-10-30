@@ -40,7 +40,7 @@ export const auth = betterAuth({
   ...(googleSocialProvider ? { socialProviders: googleSocialProvider } : {}),
   user: {
     additionalFields: {
-      role: { type: "string", required: false, defaultValue: "site", input: false },
+      role: { type: "string", required: false, defaultValue: "pending", input: false },
     },
   },
   databaseHooks: {

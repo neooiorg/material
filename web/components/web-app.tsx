@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Eye, EyeOff } from "lucide-react";
+import { Bell, Clock3, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { authClient, type AppUser, type Role } from "@/lib/auth";
-import { api } from "@/lib/api";
+import { api, jsonBody } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Dashboard, Orders, OrderDetail, OrderCreate, Projects, ProjectDetail, Reconcile, Reports, Notifications, Activity } from "@/components/operations";
 import { AdminCatalog, Budgets, Members } from "@/components/management";
@@ -121,6 +123,90 @@ function Login({ onLogin }: { onLogin: () => void }) {
   </main>;
 }
 
+type OwnAccessRequest = {
+  id: string;
+  requestedRole: string;
+  note: string | null;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+  updatedAt: string;
+};
+
+function AccessGate({ user, onRefresh, onSignOut }: { user: AppUser; onRefresh: () => void; onSignOut: () => Promise<void> }) {
+  const [request, setRequest] = useState<OwnAccessRequest | null | undefined>(undefined);
+  const [requestedRole, setRequestedRole] = useState("site");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function loadRequest() {
+    try { setRequest(await api<OwnAccessRequest | null>("/api/access-request/me")); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Không tải được trạng thái yêu cầu."); setRequest(null); }
+  }
+
+  useEffect(() => { void loadRequest(); }, []);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const result = await api<OwnAccessRequest>("/api/access-request", { method: "POST", ...jsonBody({ requestedRole, note }) });
+      setRequest(result);
+      toast.success("Đã gửi yêu cầu đến quản trị viên.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Không thể gửi yêu cầu."); }
+    finally { setSaving(false); }
+  }
+
+  const waiting = request?.status === "pending";
+  const approved = request?.status === "approved";
+  return <main className="flex min-h-svh items-center justify-center bg-muted/35 px-4 py-10">
+    <div className="w-full max-w-lg">
+      <Card className="gap-0 py-0 shadow-[0_24px_80px_-48px_rgba(0,0,0,0.45)]">
+        <CardHeader className="px-6 pb-6 pt-10 sm:px-10 sm:pt-12">
+          <div className="mb-5 flex size-11 items-center justify-center rounded-xl border bg-background shadow-sm">
+            {waiting ? <Clock3 className="size-5 text-amber-600" aria-hidden="true" /> : <ShieldCheck className="size-5 text-indigo-600" aria-hidden="true" />}
+          </div>
+          <CardTitle className="text-2xl font-semibold tracking-[-0.025em]">{approved ? "Yêu cầu đã được duyệt" : waiting ? "Đang chờ phân quyền" : "Yêu cầu quyền truy cập"}</CardTitle>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {approved ? "Quyền mới đã sẵn sàng. Kiểm tra lại để mở hệ thống." : waiting ? "Quản trị viên đã nhận được yêu cầu. Sau khi được duyệt, bạn có thể vào hệ thống bằng tài khoản này." : "Tài khoản đã đăng nhập thành công nhưng chưa có vai trò trong hệ thống."}
+          </p>
+        </CardHeader>
+        <CardContent className="px-6 pb-10 sm:px-10 sm:pb-12">
+          <div className="mb-6 rounded-xl bg-muted px-4 py-3 text-sm">
+            <p className="font-medium">{user.name}</p>
+            <p className="mt-0.5 break-all text-muted-foreground">{user.email}</p>
+          </div>
+
+          {request === undefined ? <div className="h-32 animate-pulse rounded-xl bg-muted" aria-label="Đang tải trạng thái yêu cầu" /> : waiting || approved ? <div className="space-y-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              {request.status === "approved" ? "Yêu cầu đã được duyệt. Hãy kiểm tra lại quyền để mở hệ thống." : <>Vai trò đề xuất: <strong>{request.requestedRole === "accountant" ? "Kế toán" : "Bộ phận thi công"}</strong></>}
+            </div>
+            <Button className="w-full" onClick={onRefresh}>Kiểm tra quyền đã cấp</Button>
+            <Button className="w-full" variant="outline" onClick={() => void onSignOut()}>Đăng xuất</Button>
+          </div> : <form className="space-y-5" onSubmit={submit}>
+            {request?.status === "rejected" && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Yêu cầu trước chưa được chấp thuận. Bạn có thể cập nhật thông tin và gửi lại.</p>}
+            <div className="space-y-2">
+              <Label htmlFor="requested-role">Vai trò đề xuất</Label>
+              <Select value={requestedRole} onValueChange={(value) => setRequestedRole(value ?? "site")}>
+                <SelectTrigger id="requested-role" className="w-full"><SelectValue>{requestedRole === "accountant" ? "Kế toán" : "Bộ phận thi công"}</SelectValue></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="site">Bộ phận thi công</SelectItem>
+                  <SelectItem value="accountant">Kế toán</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="access-note">Ghi chú cho Admin</Label>
+              <Textarea id="access-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Ví dụ: Công trình hoặc bộ phận bạn đang phụ trách" />
+            </div>
+            <Button className="w-full" type="submit" disabled={saving}>{saving ? "Đang gửi…" : "Gửi yêu cầu phân quyền"}</Button>
+            <Button className="w-full" type="button" variant="outline" onClick={() => void onSignOut()}>Đăng xuất</Button>
+          </form>}
+        </CardContent>
+      </Card>
+    </div>
+  </main>;
+}
+
 function GoogleMark() {
   return <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
     <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.06H12v3.9h5.39a4.6 4.6 0 0 1-2 3.02v2.53h3.24c1.9-1.75 2.97-4.33 2.97-7.39Z" />
@@ -137,7 +223,7 @@ export function WebApp() {
   const [loading, setLoading] = useState(true);
   async function loadUser() {
     setLoading(true);
-    try { const result = await api<{ user: AppUser }>("/api/session"); if (!(["admin", "site", "accountant"] as string[]).includes(result.user.role)) { setUser(null); return; } setUser(result.user); }
+    try { const result = await api<{ user: AppUser }>("/api/session"); setUser(result.user); }
     catch { setUser(null); }
     finally { setLoading(false); }
   }
@@ -151,7 +237,8 @@ export function WebApp() {
   if (pathname === "/docs") return <div className="mx-auto max-w-5xl p-4 py-10 md:p-8"><Docs/></div>;
   if (loading) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Đang mở hệ thống…</div>;
   if (!user) return <Login onLogin={loadUser}/>;
-  const role = user.role === "admin" || user.role === "site" || user.role === "accountant" ? user.role : "site";
+  if (user.role === "pending") return <AccessGate user={user} onRefresh={loadUser} onSignOut={async () => { await authClient.signOut(); setUser(null); router.push("/"); }}/>;
+  const role = user.role;
   const current = nav.find((item) => item.href === pathname) ?? nav.find((item) => pathname.startsWith(item.href + "/") && item.href !== "/");
   return <SidebarProvider>
     <AppSidebar

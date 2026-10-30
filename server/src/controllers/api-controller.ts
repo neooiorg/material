@@ -6,11 +6,14 @@ import * as receipts from "../services/receipt-service.js";
 import * as reports from "../services/report-service.js";
 import * as notification from "../services/notification-service.js";
 import * as members from "../services/member-service.js";
+import * as accessRequests from "../services/access-request-service.js";
 
 const idParam = (request: Request) => Number(request.params.id);
 const me = (request: Request) => request.currentUser!;
 
 export async function session(request: Request, response: Response) { response.json({ user: me(request) }); }
+export async function ownAccessRequest(request: Request, response: Response) { response.json(await accessRequests.getOwnAccessRequest(me(request))); }
+export async function accessRequestSubmit(request: Request, response: Response) { response.status(201).json(await accessRequests.submitAccessRequest(me(request), request.body ?? {})); }
 export async function dashboard(request: Request, response: Response) { response.json(await reports.getDashboard(me(request))); }
 export async function orderList(request: Request, response: Response) { response.json(await orders.listOrders(me(request))); }
 export async function orderDetail(request: Request, response: Response) {
@@ -82,3 +85,6 @@ export async function memberList(_request: Request, response: Response) { respon
 export async function memberInvite(request: Request, response: Response) { response.status(201).json(await members.inviteMember(me(request), request.body)); }
 export async function memberUpdate(request: Request, response: Response) { await members.updateMember(me(request), String(request.params.id), request.body); response.json({ ok: true }); }
 export async function memberDelete(request: Request, response: Response) { await members.deleteMember(me(request), String(request.params.id)); response.json({ ok: true }); }
+export async function accessRequestList(_request: Request, response: Response) { response.json(await accessRequests.listPendingAccessRequests()); }
+export async function accessRequestApprove(request: Request, response: Response) { await accessRequests.approveAccessRequest(me(request), String(request.params.id), request.body ?? {}); response.json({ ok: true }); }
+export async function accessRequestReject(request: Request, response: Response) { await accessRequests.rejectAccessRequest(me(request), String(request.params.id)); response.json({ ok: true }); }

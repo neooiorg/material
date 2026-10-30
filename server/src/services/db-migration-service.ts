@@ -18,6 +18,34 @@ export async function ensureRuntimeDatabaseCompatibility() {
   `);
   await db.execute(sql`
     DO $$
+    BEGIN
+      IF to_regtype('public.role') IS NOT NULL AND NOT EXISTS (
+        SELECT 1
+        FROM pg_enum
+        WHERE enumlabel = 'pending'
+          AND enumtypid = 'public.role'::regtype
+      ) THEN
+        ALTER TYPE "role" ADD VALUE 'pending';
+      END IF;
+    END $$;
+  `);
+  await db.execute(sql`ALTER TABLE "user" ALTER COLUMN role SET DEFAULT 'pending'`);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS access_requests (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      requested_role TEXT NOT NULL DEFAULT 'site',
+      note TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      reviewed_by_id TEXT REFERENCES "user"(id) ON DELETE SET NULL,
+      reviewed_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS access_requests_user_id_uq ON access_requests(user_id)`);
+  await db.execute(sql`
+    DO $$
     DECLARE
       actual_posted_column_existed BOOLEAN;
     BEGIN
