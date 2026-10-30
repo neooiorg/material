@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   title: "Sổ Vật Tư | Quản lý vật tư công trình",
   description: "Đặt vật tư, duyệt đơn, theo dõi công trình và chi phí.",
   applicationName: "Sổ Vật Tư",
-  manifest: "/manifest.webmanifest?v=so-vat-tu-3",
   formatDetection: { telephone: false },
   appleWebApp: {
     capable: true,
@@ -46,5 +45,5 @@ export const viewport: Viewport = {
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <html lang="vi" className={manrope.variable}><body className="min-h-screen bg-background font-sans text-foreground antialiased"><TooltipProvider><WebApp />{children}</TooltipProvider><PwaManager/><Toaster richColors position="top-right" /></body></html>;
+  return <html lang="vi" className={manrope.variable}><head><link rel="manifest" href="/manifest.webmanifest?v=so-vat-tu-3" /></head><body className="min-h-screen bg-background font-sans text-foreground antialiased"><TooltipProvider><WebApp />{children}</TooltipProvider><PwaManager/><Toaster richColors position="top-right" /></body></html>;
 }
