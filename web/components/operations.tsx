@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { DataGrid, DataState, Field, NativeSelect, PageTitle, Status, useApi } from "@/components/common";
 import { DashboardStatCard } from "@/components/dashboard-stat-card";
-import { Boxes, Building2, ClipboardCheck, PackageCheck, WalletCards } from "lucide-react";
+import { OrderProofs, type OrderProof } from "@/components/receipts";
+import { Boxes, Building2, ClipboardCheck, Truck, WalletCards } from "lucide-react";
 
 type OrderRow = { id: number; code: string; projectName: string; creatorName: string; createdAt: string; status: string; total: string; note?: string; items?: { name: string; qty: string; unit: string }[] };
 type Project = { id: number; code: string; name: string; status: string; address?: string; defaultSupplierContactId?: number | null };
@@ -20,19 +21,20 @@ type Material = { id: number; name: string; unit: string; group: string };
 type Contact = { id: number; name: string; phone: string };
 const statusFilterOptions = [
   { value: "pending", label: "Chờ duyệt" },
-  { value: "approved", label: "Đã duyệt" },
+  { value: "approved", label: "Chờ nhận hàng" },
   { value: "rejected", label: "Từ chối" },
+  { value: "delivered", label: "Đã nhận hàng" },
   { value: "active", label: "Đang thực hiện" },
   { value: "completed", label: "Hoàn thành" },
   { value: "paused", label: "Tạm dừng" },
 ];
 
 export function Dashboard({ role }: { role: Role }) {
-  const query = useApi<{ projectCount: number; pendingCount: number; approvedCount: number; materialCount: number; approvedMonth: number; recentOrders: OrderRow[] }>("/api/dashboard");
+  const query = useApi<{ projectCount: number; pendingCount: number; awaitingReceiptCount: number; materialCount: number; receivedMonth: number; recentOrders: OrderRow[] }>("/api/dashboard");
   const cards = query.data ? [
     { label: "Công trình", value: query.data.projectCount, href: "/projects", detail: "Xem tổng hợp công trình", badge: "Đang theo dõi", icon: Building2 },
     { label: "Đơn chờ duyệt", value: query.data.pendingCount, href: role === "admin" ? "/approvals" : "/orders", detail: "Xem các đơn đang chờ", badge: query.data.pendingCount > 0 ? "Cần xử lý" : "Đã xử lý", icon: ClipboardCheck, urgent: query.data.pendingCount > 0 },
-    { label: "Đơn đã duyệt", value: query.data.approvedCount, href: "/orders", detail: "Xem danh sách đơn", badge: "Đã duyệt", icon: PackageCheck },
+    { label: "Chờ nhận hàng", value: query.data.awaitingReceiptCount, href: role === "accountant" ? "/orders" : "/receipts", detail: "Đơn đã duyệt chờ xác nhận", badge: query.data.awaitingReceiptCount > 0 ? "Cần xác nhận" : "Đã xử lý", icon: Truck, urgent: query.data.awaitingReceiptCount > 0 },
     { label: "Vật tư", value: query.data.materialCount, href: role === "admin" ? "/admin/materials" : "/projects", detail: "Xem danh mục vật tư", badge: "Trong danh mục", icon: Boxes },
   ] : [];
 
@@ -44,9 +46,9 @@ export function Dashboard({ role }: { role: Role }) {
       </div>
       <div className="mt-4 max-w-xl">
         <DashboardStatCard
-          label="Giá trị đơn duyệt trong tháng"
-          value={money(query.data?.approvedMonth)}
-          detail="Tổng giá trị các đơn đã duyệt"
+          label="Giá trị đã nhận trong tháng"
+          value={money(query.data?.receivedMonth)}
+          detail="Tổng giá trị đơn đã xác nhận nhận hàng"
           badge="Tháng này"
           icon={WalletCards}
           href={role === "site" ? "/orders" : "/reports"}
@@ -65,15 +67,86 @@ export function Orders({ approvals = false, canCreate = false }: { approvals?: b
   const query = useApi<OrderRow[]>(approvals ? "/api/approvals" : "/api/orders");
   const [status, setStatus] = useState("all");
   const rows = (query.data ?? []).filter((row) => status === "all" || row.status === status);
-  return <><PageTitle title={approvals ? "Đơn chờ duyệt" : "Đơn đặt vật tư"} description={approvals ? "Kiểm tra nội dung và duyệt hoặc từ chối từng đơn." : "Theo dõi toàn bộ đơn theo quyền truy cập."} action={canCreate ? <Button render={<Link href="/orders/new"/>}>Tạo đơn</Button> : undefined}/><div className="mb-4 max-w-xs"><NativeSelect label="Trạng thái" value={status} onChange={setStatus} options={[{ value: "all", label: "Tất cả" }, { value: "pending", label: "Chờ duyệt" }, { value: "approved", label: "Đã duyệt" }, { value: "rejected", label: "Từ chối" }]}/></div><DataState loading={query.loading} error={query.error} retry={query.refresh}><OrderTable rows={rows}/></DataState></>;
+  return <><PageTitle title={approvals ? "Đơn chờ duyệt" : "Đơn đặt vật tư"} description={approvals ? "Kiểm tra nội dung và duyệt hoặc từ chối từng đơn." : "Theo dõi toàn bộ đơn theo quyền truy cập."} action={canCreate ? <Button render={<Link href="/orders/new"/>}>Tạo đơn</Button> : undefined}/><div className="mb-4 max-w-xs"><NativeSelect label="Trạng thái" value={status} onChange={setStatus} options={[{ value: "all", label: "Tất cả" }, { value: "pending", label: "Chờ duyệt" }, { value: "approved", label: "Chờ nhận hàng" }, { value: "delivered", label: "Đã nhận hàng" }, { value: "rejected", label: "Từ chối" }]}/></div><DataState loading={query.loading} error={query.error} retry={query.refresh}><OrderTable rows={rows}/></DataState></>;
 }
 
-type OrderDetailData = OrderRow & { note: string | null; rejectedReason: string | null; approvedAt: string | null; supplierContact: Contact | null; items: { id: number; name: string; qty: string; unit: string; unitPrice: string; amount: string }[]; timeline: { id: number; summary: string; createdAt: string }[] };
+type OrderDetailData = OrderRow & { note: string | null; rejectedReason: string | null; approvedAt: string | null; deliveredAt: string | null; receivedByName: string | null; receiptNote: string | null; actualPostedAt: string | null; supplierContact: Contact | null; items: { id: number; name: string; qty: string; unit: string; unitPrice: string; amount: string }[]; timeline: { id: number; summary: string; createdAt: string }[]; proofs: OrderProof[] };
 export function OrderDetail({ id, role }: { id: number; role: Role }) {
-  const query = useApi<OrderDetailData>(`/api/orders/${id}`); const [reason, setReason] = useState(""); const [saving, setSaving] = useState(false);
-  async function decision(action: "approve" | "reject") { setSaving(true); try { await api(`/api/orders/${id}/${action}`, { method: "POST", ...jsonBody(action === "reject" ? { reason } : {}) }); toast.success(action === "approve" ? "Đã duyệt đơn." : "Đã từ chối đơn."); query.refresh(); } catch (e) { toast.error(e instanceof Error ? e.message : "Không xử lý được đơn."); } finally { setSaving(false); } }
-  function shareZalo() { const order = query.data; if (!order?.supplierContact?.phone) return; const lines = [`Đơn cần đặt: ${order.code}`, `Công trình: ${order.projectName}`, ...order.items.map((item) => `• ${item.name}: ${number(item.qty)} ${item.unit}`)]; const text = encodeURIComponent(lines.join("\n")); const phone = order.supplierContact.phone.replace(/\D/g, "").replace(/^0/, "84"); window.open(`https://zalo.me/${phone}?text=${text}`, "_blank", "noopener,noreferrer"); }
-  return <><PageTitle title={query.data?.code ?? "Chi tiết đơn"} description={query.data ? `${query.data.projectName} · ${date(query.data.createdAt)}` : undefined} action={<Button variant="outline" render={<Link href="/orders"/>}>Danh sách đơn</Button>}/><DataState loading={query.loading} error={query.error} retry={query.refresh}>{query.data && <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]"><div className="space-y-5"><Card><CardHeader><div className="flex items-center justify-between"><CardTitle>Thông tin đơn</CardTitle><Status value={query.data.status}/></div></CardHeader><CardContent className="grid gap-3 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">Người tạo:</span> {query.data.creatorName}</p><p><span className="text-muted-foreground">Đơn vị cung cấp:</span> {query.data.supplierContact?.name ?? "Chưa chọn"}</p>{query.data.note && <p className="sm:col-span-2"><span className="text-muted-foreground">Ghi chú:</span> {query.data.note}</p>}{query.data.rejectedReason && <p className="text-destructive sm:col-span-2">Lý do từ chối: {query.data.rejectedReason}</p>}</CardContent></Card><Card><CardHeader><CardTitle>Vật tư</CardTitle></CardHeader><CardContent><DataGrid rows={query.data.items} columns={[{ id: "name", label: "Tên", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => r.name }, { id: "qty", label: "Số lượng", accessor: (r) => Number(r.qty), filter: { type: "number" }, render: (r) => `${number(r.qty)} ${r.unit}` }, { id: "unitPrice", label: "Đơn giá", accessor: (r) => Number(r.unitPrice), filter: { type: "number" }, render: (r) => money(r.unitPrice) }, { id: "amount", label: "Thành tiền", accessor: (r) => Number(r.amount), filter: { type: "number" }, render: (r) => money(r.amount) }]}/><p className="mt-4 text-right text-lg font-semibold">Tổng cộng: {money(query.data.total)}</p></CardContent></Card></div><div className="space-y-5"><Card><CardHeader><CardTitle>Thao tác</CardTitle></CardHeader><CardContent className="space-y-3">{query.data.status === "approved" && query.data.supplierContact?.phone && role !== "accountant" && <Button className="w-full" variant="outline" onClick={shareZalo}>Gửi nội dung qua Zalo</Button>}{role === "admin" && query.data.status === "pending" && <><Button className="w-full" disabled={saving} onClick={() => void decision("approve")}>Duyệt đơn</Button><Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Lý do từ chối (không bắt buộc)" aria-label="Lý do từ chối"/><Button className="w-full" variant="destructive" disabled={saving} onClick={() => void decision("reject")}>Từ chối</Button></>}</CardContent></Card><Card><CardHeader><CardTitle>Nhật ký đơn</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">{query.data.timeline.map((event) => <div key={event.id} className="border-b pb-3 last:border-0"><p>{event.summary}</p><p className="mt-1 text-xs text-muted-foreground">{date(event.createdAt)}</p></div>)}</CardContent></Card></div></div>}</DataState></>;
+  const query = useApi<OrderDetailData>(`/api/orders/${id}`);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function decision(action: "approve" | "reject") {
+    setSaving(true);
+    try {
+      await api(`/api/orders/${id}/${action}`, { method: "POST", ...jsonBody(action === "reject" ? { reason } : {}) });
+      toast.success(action === "approve" ? "Đã duyệt đơn." : "Đã từ chối đơn.");
+      query.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không xử lý được đơn.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function shareZalo() {
+    const order = query.data;
+    if (!order?.supplierContact?.phone) return;
+    const lines = [`Đơn cần đặt: ${order.code}`, `Công trình: ${order.projectName}`, ...order.items.map((item) => `• ${item.name}: ${number(item.qty)} ${item.unit}`)];
+    const text = encodeURIComponent(lines.join("\n"));
+    const phone = order.supplierContact.phone.replace(/\D/g, "").replace(/^0/, "84");
+    window.open(`https://zalo.me/${phone}?text=${text}`, "_blank", "noopener,noreferrer");
+  }
+
+  const order = query.data;
+  return <>
+    <PageTitle title={order?.code ?? "Chi tiết đơn"} description={order ? `${order.projectName} · ${date(order.createdAt)}` : undefined} action={<Button variant="outline" render={<Link href="/orders" />}>Danh sách đơn</Button>} />
+    <DataState loading={query.loading} error={query.error} retry={query.refresh}>
+      {order ? <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+        <div className="space-y-5">
+          <Card>
+            <CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>Thông tin đơn</CardTitle><Status value={order.status} /></div></CardHeader>
+            <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
+              <p><span className="text-muted-foreground">Người tạo:</span> {order.creatorName}</p>
+              <p><span className="text-muted-foreground">Đơn vị cung cấp:</span> {order.supplierContact?.name ?? "Chưa chọn"}</p>
+              {order.note ? <p className="sm:col-span-2"><span className="text-muted-foreground">Ghi chú:</span> {order.note}</p> : null}
+              {order.rejectedReason ? <p className="text-destructive sm:col-span-2">Lý do từ chối: {order.rejectedReason}</p> : null}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Vật tư</CardTitle></CardHeader>
+            <CardContent>
+              <DataGrid rows={order.items} columns={[
+                { id: "name", label: "Tên", accessor: (row) => row.name, filter: { type: "text" }, render: (row) => row.name },
+                { id: "qty", label: "Số lượng", accessor: (row) => Number(row.qty), filter: { type: "number" }, render: (row) => `${number(row.qty)} ${row.unit}` },
+                { id: "unitPrice", label: "Đơn giá", accessor: (row) => Number(row.unitPrice), filter: { type: "number" }, render: (row) => money(row.unitPrice) },
+                { id: "amount", label: "Thành tiền", accessor: (row) => Number(row.amount), filter: { type: "number" }, render: (row) => money(row.amount) },
+              ]} />
+              <p className="mt-4 text-right text-lg font-semibold">Tổng cộng: {money(order.total)}</p>
+            </CardContent>
+          </Card>
+          <OrderProofs orderId={id} status={order.status} role={role} proofs={order.proofs ?? []} receivedAt={order.deliveredAt} receivedByName={order.receivedByName} receiptNote={order.receiptNote} onRefresh={query.refresh} />
+        </div>
+        <div className="space-y-5">
+          <Card>
+            <CardHeader><CardTitle>Thao tác</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {order.status === "approved" && order.supplierContact?.phone && role !== "accountant" ? <Button className="w-full" variant="outline" onClick={shareZalo}>Gửi nội dung qua Zalo</Button> : null}
+              {role === "admin" && order.status === "pending" ? <>
+                <Button className="w-full" disabled={saving} onClick={() => void decision("approve")}>Duyệt đơn</Button>
+                <Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Lý do từ chối (không bắt buộc)" aria-label="Lý do từ chối" />
+                <Button className="w-full" variant="destructive" disabled={saving} onClick={() => void decision("reject")}>Từ chối</Button>
+              </> : null}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Nhật ký đơn</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm">{order.timeline.map((event) => <div key={event.id} className="border-b pb-3 last:border-0"><p>{event.summary}</p><p className="mt-1 text-xs text-muted-foreground">{date(event.createdAt)}</p></div>)}</CardContent>
+          </Card>
+        </div>
+      </div> : null}
+    </DataState>
+  </>;
 }
 
 type OrderOptions = { projects: Project[]; materials: Material[]; contacts: Contact[]; projectContacts: Record<number, number[]>; suggestedPrices: Record<number, number> };
@@ -109,7 +182,7 @@ type ReportData = { month: string; label: string; projects: Project[]; materialS
 export function Reports() {
   const now = new Date(); const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`); const [project, setProject] = useState("all"); const path = `/api/reports?month=${month}${project !== "all" ? `&projectId=${project}` : ""}`; const query = useApi<ReportData>(path); const data = query.data;
   async function download() { try { const response = await fetch(`/api/reports/export?month=${month}${project !== "all" ? `&projectId=${project}` : ""}`); if (!response.ok) throw new Error("Không thể xuất CSV."); const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `thong-ke-${month}.csv`; a.click(); URL.revokeObjectURL(url); } catch (e) { toast.error(e instanceof Error ? e.message : "Không thể xuất CSV."); } }
-  return <><PageTitle title="Thống kê chi phí" description="Chi phí vật tư của các đơn đã duyệt." action={<Button variant="outline" onClick={() => void download()}>Xuất CSV</Button>}/><div className="mb-5 grid max-w-xl gap-4 sm:grid-cols-2"><Field label="Tháng" type="month" value={month} onChange={setMonth}/><NativeSelect label="Công trình" value={project} onChange={setProject} options={[{ value: "all", label: "Tất cả công trình" }, ...(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))]}/></div><DataState loading={query.loading} error={query.error} retry={query.refresh}>{data && <><Card className="mb-5"><CardContent className="py-5"><p className="text-sm text-muted-foreground">Chi phí tháng {data.label}</p><strong className="text-2xl">{money(data.totalCost)}</strong></CardContent></Card><div className="mb-5 grid gap-5 md:grid-cols-2"><Card><CardHeader><CardTitle>Theo nhóm vật tư</CardTitle></CardHeader><CardContent className="space-y-3">{data.groupData.length ? data.groupData.map((g) => <div key={g.name}><div className="flex justify-between gap-2 text-sm"><span>{g.name}</span><span>{money(g.value)}</span></div><div className="mt-1 h-2 rounded bg-muted"><div className="h-2 rounded bg-primary" style={{ width: `${data.totalCost ? g.value / data.totalCost * 100 : 0}%` }}/></div></div>) : <p className="text-sm text-muted-foreground">Chưa có chi phí trong kỳ.</p>}</CardContent></Card></div><DataGrid rows={data.materialStats} search="Tìm vật tư" searchText={(r) => `${r.name} ${r.group}`} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "group", label: "Nhóm", accessor: (r) => r.group, filter: { type: "select" }, render: (r) => r.group }, { id: "qty", label: "Số lượng", accessor: (r) => r.qty, filter: { type: "number" }, render: (r) => `${number(r.qty)} ${r.unit}` }, { id: "amount", label: "Chi phí", accessor: (r) => r.amount, filter: { type: "number" }, render: (r) => money(r.amount) }]}/></>}</DataState></>;
+  return <><PageTitle title="Thống kê chi phí" description="Chi phí vật tư của các đơn đã xác nhận nhận hàng." action={<Button variant="outline" onClick={() => void download()}>Xuất CSV</Button>}/><div className="mb-5 grid max-w-xl gap-4 sm:grid-cols-2"><Field label="Tháng" type="month" value={month} onChange={setMonth}/><NativeSelect label="Công trình" value={project} onChange={setProject} options={[{ value: "all", label: "Tất cả công trình" }, ...(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))]}/></div><DataState loading={query.loading} error={query.error} retry={query.refresh}>{data && <><Card className="mb-5"><CardContent className="py-5"><p className="text-sm text-muted-foreground">Chi phí đã nhận tháng {data.label}</p><strong className="text-2xl">{money(data.totalCost)}</strong></CardContent></Card><div className="mb-5 grid gap-5 md:grid-cols-2"><Card><CardHeader><CardTitle>Theo nhóm vật tư</CardTitle></CardHeader><CardContent className="space-y-3">{data.groupData.length ? data.groupData.map((g) => <div key={g.name}><div className="flex justify-between gap-2 text-sm"><span>{g.name}</span><span>{money(g.value)}</span></div><div className="mt-1 h-2 rounded bg-muted"><div className="h-2 rounded bg-primary" style={{ width: `${data.totalCost ? g.value / data.totalCost * 100 : 0}%` }}/></div></div>) : <p className="text-sm text-muted-foreground">Chưa có vật tư được xác nhận trong kỳ.</p>}</CardContent></Card></div><DataGrid rows={data.materialStats} search="Tìm vật tư" searchText={(r) => `${r.name} ${r.group}`} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "group", label: "Nhóm", accessor: (r) => r.group, filter: { type: "select" }, render: (r) => r.group }, { id: "qty", label: "Số lượng", accessor: (r) => r.qty, filter: { type: "number" }, render: (r) => `${number(r.qty)} ${r.unit}` }, { id: "amount", label: "Chi phí", accessor: (r) => r.amount, filter: { type: "number" }, render: (r) => money(r.amount) }]}/></>}</DataState></>;
 }
 
 type Notification = { id: number; title: string; message: string; orderId: number | null; isRead: boolean; createdAt: string };

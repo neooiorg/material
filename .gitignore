@@ -23,6 +23,7 @@ node_modules/
 
 # production
 /build
+/server/uploads/
 
 # misc
 .DS_Store

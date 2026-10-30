@@ -32,6 +32,8 @@ Production mặc định tin cậy `material.apps.neooi.com` và cho phép origi
 
 Trong Dokploy, web và backend nằm trong cùng project production cùng PostgreSQL hiện hữu. Web dùng Dockerfile `web/Dockerfile`, cổng `3000`, health check `GET /health`; backend dùng `server/Dockerfile`, cổng `4000`. Không còn quy trình phát hành mobile.
 
+Backend cần persistent volume gắn vào `/app/uploads` để lưu ảnh và PDF xác nhận nhận hàng. Đặt `UPLOAD_DIR=/app/uploads/order-proofs`; không phục vụ thư mục này công khai vì chứng từ được tải qua API có kiểm tra phiên đăng nhập và quyền xem đơn.
+
 Production được triển khai tại `https://material.apps.neooi.com` và dùng backend/database trong cùng project Dokploy. Hệ thống hiện vận hành theo chế độ web-only; source Expo được giữ lại trong repository để tham chiếu nhưng không còn nằm trong quy trình phát hành.
 
 Đăng nhập email/mật khẩu dùng Better Auth. Với Google OAuth, Google Cloud phải có callback `https://material.apps.neooi.com/api/auth/callback/google`.

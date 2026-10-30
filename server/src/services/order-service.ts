@@ -1,18 +1,20 @@
 import { alias } from "drizzle-orm/pg-core";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   activityLog, materials, notifications, orderItems, orders,
-  projectMaterialActual, projectSupplierContacts, projects, supplierContacts, user, type UserRole,
+  projectSupplierContacts, projects, supplierContacts, user, type UserRole,
 } from "../db/schema.js";
 import { toNumber } from "../lib/utils.js";
 import { logActivity } from "./activity-service.js";
 import { sendEmail } from "./email-service.js";
+import { listProofs } from "./receipt-service.js";
 
 type CurrentUser = { id: string; name: string; role: UserRole };
 type NewOrder = { projectId: number; supplierContactId?: number | null; note?: string | null; items?: { materialId: number; qty: number; unitPrice: number }[] };
 
 const creator = alias(user, "creator");
+const receiver = alias(user, "receiver");
 
 function scopedOrderWhere(me: CurrentUser) {
   if (me.role === "site") return eq(orders.createdById, me.id);
@@ -35,23 +37,27 @@ export async function getOrder(me: CurrentUser, orderId: number) {
     id: orders.id, code: orders.code, status: orders.status, note: orders.note,
     total: orders.total, createdAt: orders.createdAt, approvedAt: orders.approvedAt,
     deliveredAt: orders.deliveredAt, rejectedReason: orders.rejectedReason,
+    receiptNote: orders.receiptNote, actualPostedAt: orders.actualPostedAt,
     createdById: orders.createdById,
-    projectName: projects.name, creatorName: creator.name, supplierContactName: supplierContacts.name, supplierContactPhone: supplierContacts.phone,
+    projectName: projects.name, creatorName: creator.name, receivedByName: receiver.name,
+    supplierContactName: supplierContacts.name, supplierContactPhone: supplierContacts.phone,
   }).from(orders).innerJoin(projects, eq(orders.projectId, projects.id))
     .innerJoin(creator, eq(orders.createdById, creator.id))
+    .leftJoin(receiver, eq(orders.receivedById, receiver.id))
     .leftJoin(supplierContacts, eq(orders.supplierContactId, supplierContacts.id))
     .where(eq(orders.id, orderId));
   if (!order) return null;
   if (me.role === "site" && order.createdById !== me.id) throw new Error("Bạn không có quyền xem đơn này.");
-  const [items, timeline] = await Promise.all([
+  const [items, timeline, proofs] = await Promise.all([
     db.select({ id: orderItems.id, materialId: materials.id, name: materials.name, unit: materials.unit,
       group: materials.group, qty: orderItems.qty, unitPrice: orderItems.unitPrice, amount: orderItems.amount })
       .from(orderItems).innerJoin(materials, eq(orderItems.materialId, materials.id))
       .where(eq(orderItems.orderId, orderId)),
     db.select().from(activityLog).where(and(eq(activityLog.entityType, "order"), eq(activityLog.entityId, orderId)))
       .orderBy(asc(activityLog.createdAt)),
+    listProofs(me, orderId),
   ]);
-  return { ...order, supplierContact: order.supplierContactName ? { name: order.supplierContactName, phone: order.supplierContactPhone } : null, items, timeline };
+  return { ...order, supplierContact: order.supplierContactName ? { name: order.supplierContactName, phone: order.supplierContactPhone } : null, items, timeline, proofs };
 }
 
 export async function getApprovalOrders() {
@@ -132,17 +138,11 @@ export async function approveOrder(me: CurrentUser, orderId: number) {
     creatorEmail = creatorUser?.email ?? "";
     code = order.code;
     await tx.update(orders).set({ status: "approved", approvedAt: new Date(), approvedById: me.id }).where(eq(orders.id, orderId));
-    const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId));
-    for (const item of items) await tx.insert(projectMaterialActual).values({ projectId: order.projectId, materialId: item.materialId,
-      qty: item.qty, amount: item.amount, updatedAt: new Date() }).onConflictDoUpdate({
-        target: [projectMaterialActual.projectId, projectMaterialActual.materialId],
-        set: { qty: sql`${projectMaterialActual.qty} + ${item.qty}`, amount: sql`${projectMaterialActual.amount} + ${item.amount}`, updatedAt: new Date() },
-      });
     const recipients = [order.createdById];
     await tx.insert(notifications).values(recipients.map((userId) => ({ userId, title: `Đơn ${order.code} đã được duyệt`,
       message: `Đơn ${order.code} của bạn đã được duyệt.`, orderId })));
     await logActivity(tx, { actorId: me.id, actorName: me.name, action: "order.approved", entityType: "order", entityId: orderId,
-      summary: `${me.name} đã duyệt đơn ${order.code}. Số liệu được phân bổ vào bảng tổng hợp thực tế.` });
+      summary: `${me.name} đã duyệt đơn ${order.code}. Đơn đang chờ kỹ thuật xác nhận nhận hàng.` });
   });
   if (creatorEmail) await sendEmail({
     to: creatorEmail,

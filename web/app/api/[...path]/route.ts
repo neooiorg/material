@@ -27,13 +27,15 @@ async function forward(request: NextRequest, context: Context) {
   headers.set("x-forwarded-host", publicUrl.host);
   headers.set("x-forwarded-proto", publicUrl.protocol.replace(":", ""));
   try {
-    const upstream = await fetch(target, {
+    const init: RequestInit & { duplex?: "half" } = {
       method: request.method,
       headers,
-      body: request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer(),
+      body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
       redirect: "manual",
       cache: "no-store",
-    });
+    };
+    if (init.body) init.duplex = "half";
+    const upstream = await fetch(target, init);
     const responseHeaders = new Headers(upstream.headers);
     responseHeaders.delete("set-cookie");
     for (const cookie of upstream.headers.getSetCookie()) responseHeaders.append("set-cookie", cookie);

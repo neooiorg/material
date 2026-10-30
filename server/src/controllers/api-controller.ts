@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { listActivity } from "../services/activity-service.js";
 import * as catalog from "../services/catalog-service.js";
 import * as orders from "../services/order-service.js";
+import * as receipts from "../services/receipt-service.js";
 import * as reports from "../services/report-service.js";
 import * as notification from "../services/notification-service.js";
 import * as members from "../services/member-service.js";
@@ -22,6 +23,31 @@ export async function orderApprove(request: Request, response: Response) { await
 export async function orderReject(request: Request, response: Response) { await orders.rejectOrder(me(request), idParam(request), String(request.body?.reason ?? "")); response.json({ ok: true }); }
 export async function approvalList(_request: Request, response: Response) { response.json(await orders.getApprovalOrders()); }
 export async function orderOptions(_request: Request, response: Response) { response.json(await catalog.getOrderOptions()); }
+export async function receiptList(request: Request, response: Response) { response.json(await receipts.listReceipts(me(request))); }
+export async function orderProofUpload(request: Request, response: Response) {
+  response.status(201).json(await receipts.addProofs(me(request), idParam(request), (request.files as Express.Multer.File[] | undefined) ?? []));
+}
+export async function orderProofFile(request: Request, response: Response) {
+  const proofId = Number(request.params.proofId);
+  if (!Number.isInteger(proofId) || proofId <= 0) throw new Error("Mã chứng từ không hợp lệ.");
+  const proof = await receipts.getProofFile(me(request), idParam(request), proofId);
+  const safeAscii = proof.originalName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100) || "chung-tu";
+  response.setHeader("Content-Type", proof.mimeType);
+  response.setHeader("Content-Length", String(proof.size));
+  response.setHeader("Cache-Control", "private, max-age=300");
+  response.setHeader("Content-Disposition", `inline; filename="${safeAscii}"; filename*=UTF-8''${encodeURIComponent(proof.originalName)}`);
+  response.sendFile(proof.path);
+}
+export async function orderProofDelete(request: Request, response: Response) {
+  const proofId = Number(request.params.proofId);
+  if (!Number.isInteger(proofId) || proofId <= 0) throw new Error("Mã chứng từ không hợp lệ.");
+  await receipts.deleteProof(me(request), idParam(request), proofId);
+  response.json({ ok: true });
+}
+export async function orderConfirmReceipt(request: Request, response: Response) {
+  await receipts.confirmReceipt(me(request), idParam(request), String(request.body?.note ?? ""));
+  response.json({ ok: true });
+}
 
 export async function projectList(_request: Request, response: Response) { response.json(await catalog.listProjects()); }
 export async function projectCreate(request: Request, response: Response) { await catalog.createProject(me(request), request.body); response.status(201).json({ ok: true }); }

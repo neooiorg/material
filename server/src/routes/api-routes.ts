@@ -1,6 +1,7 @@
 import { Router } from "express";
 import * as api from "../controllers/api-controller.js";
 import { requireRoles, requireUser } from "../middleware/auth.js";
+import { uploadOrderProofs } from "../middleware/proof-upload.js";
 
 export const apiRouter = Router();
 apiRouter.use(requireUser);
@@ -14,6 +15,11 @@ apiRouter.post("/orders/:id/approve", requireRoles("admin"), api.orderApprove);
 apiRouter.post("/orders/:id/reject", requireRoles("admin"), api.orderReject);
 apiRouter.get("/approvals", requireRoles("admin"), api.approvalList);
 apiRouter.get("/order-form-options", requireRoles("site", "admin"), api.orderOptions);
+apiRouter.get("/receipts", requireRoles("site", "admin"), api.receiptList);
+apiRouter.post("/orders/:id/proofs", requireRoles("site", "admin"), uploadOrderProofs, api.orderProofUpload);
+apiRouter.get("/orders/:id/proofs/:proofId", api.orderProofFile);
+apiRouter.delete("/orders/:id/proofs/:proofId", requireRoles("site", "admin"), api.orderProofDelete);
+apiRouter.post("/orders/:id/confirm-receipt", requireRoles("site", "admin"), api.orderConfirmReceipt);
 
 apiRouter.get("/projects", api.projectList);
 apiRouter.post("/projects", requireRoles("admin"), api.projectCreate);

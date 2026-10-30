@@ -5,10 +5,11 @@ export class ApiError extends Error {
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
+    const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
     response = await fetch(path, {
       ...init,
       credentials: "same-origin",
-      headers: { ...(init.body ? { "Content-Type": "application/json" } : {}), ...init.headers },
+      headers: { ...(init.body && !isFormData ? { "Content-Type": "application/json" } : {}), ...init.headers },
     });
   } catch { throw new ApiError("Không thể kết nối máy chủ.", 0); }
   if (!response.ok) {

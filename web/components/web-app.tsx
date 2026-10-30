@@ -16,6 +16,7 @@ import { Dashboard, Orders, OrderDetail, OrderCreate, Projects, ProjectDetail, R
 import { AdminCatalog, Budgets, Members } from "@/components/management";
 import { Docs } from "@/components/docs";
 import { Detail, type DetailResource } from "@/components/detail";
+import { Receipts } from "@/components/receipts";
 import { AppSidebar, nav } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { BrandLogo } from "@/components/brand-logo";
@@ -178,6 +179,7 @@ function renderPage(pathname: string, role: Role) {
   if (pathname === "/orders") return <Orders canCreate={role !== "accountant"}/>;
   if (/^\/orders\/\d+$/.test(pathname)) return <OrderDetail id={Number(pathname.split("/")[2])} role={role}/>;
   if (pathname === "/approvals" && role === "admin") return <Orders approvals/>;
+  if (pathname === "/receipts" && role !== "accountant") return <Receipts/>;
   if (pathname === "/projects") return <Projects/>;
   if (/^\/projects\/\d+$/.test(pathname)) return <ProjectDetail id={Number(pathname.split("/")[2])}/>;
   if (pathname === "/reconcile") return <Reconcile/>;

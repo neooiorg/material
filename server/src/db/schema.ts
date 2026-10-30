@@ -94,6 +94,20 @@ export const orders = pgTable("orders", {
   createdAt: timestamp("created_at").notNull().defaultNow(), approvedAt: timestamp("approved_at"),
   approvedById: text("approved_by_id").references(() => user.id, { onDelete: "set null" }),
   rejectedReason: text("rejected_reason"), deliveredAt: timestamp("delivered_at"),
+  receivedById: text("received_by_id").references(() => user.id, { onDelete: "set null" }),
+  receiptNote: text("receipt_note"),
+  actualPostedAt: timestamp("actual_posted_at"),
+});
+
+export const orderProofs = pgTable("order_proofs", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  originalName: text("original_name").notNull(),
+  storedName: text("stored_name").notNull().unique(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  uploadedById: text("uploaded_by_id").references(() => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const orderItems = pgTable("order_items", {

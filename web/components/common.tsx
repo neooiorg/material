@@ -39,7 +39,7 @@ export function DataState({ loading, error, children, retry }: { loading: boolea
 }
 
 export function Status({ value }: { value: string }) {
-  return <Badge variant={value === "rejected" ? "destructive" : value === "approved" || value === "active" ? "default" : "secondary"}>{statusText[value] ?? value}</Badge>;
+  return <Badge variant={value === "rejected" ? "destructive" : value === "approved" || value === "delivered" || value === "active" ? "default" : "secondary"}>{statusText[value] ?? value}</Badge>;
 }
 
 export function Field({ label, value, onChange, type = "text", required = false, placeholder, autoComplete }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; placeholder?: string; autoComplete?: string }) {

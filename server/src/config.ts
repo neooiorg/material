@@ -56,6 +56,7 @@ export const config = {
   resendApiKey: optionalStringFromEnv(process.env.RESEND_API_KEY),
   resendFromEmail: optionalStringFromEnv(process.env.RESEND_FROM_EMAIL) ?? "Material App <onboarding@resend.dev>",
   appUrl: optionalStringFromEnv(process.env.APP_URL) ?? (process.env.NODE_ENV === "production" ? productionWebUrl : process.env.BETTER_AUTH_URL ?? "http://localhost:4000"),
+  uploadDir: resolve(process.env.UPLOAD_DIR?.trim() || resolve(sourceDir, "../../uploads/order-proofs")),
   corsOrigins: [...new Set(configuredCorsOrigins.concat(
     process.env.NODE_ENV === "production"
       ? [productionWebUrl]

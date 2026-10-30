@@ -1,5 +1,5 @@
 import { alias } from "drizzle-orm/pg-core";
-import { and, asc, count, desc, eq, gte, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { budgets, materials, orderItems, orders, projectMaterialActual, projectSupplierContacts, projects, supplierContacts, user, type UserRole } from "../db/schema.js";
 import { monthRange, toNumber } from "../lib/utils.js";
@@ -8,7 +8,7 @@ type CurrentUser = { id: string; role: UserRole };
 
 export async function materialCosts(month?: string, projectId?: number) {
   const range = monthRange(month);
-  const conditions = [or(eq(orders.status, "approved"), eq(orders.status, "delivered")), gte(sql`coalesce(${orders.approvedAt}, ${orders.deliveredAt})`, range.start), lt(sql`coalesce(${orders.approvedAt}, ${orders.deliveredAt})`, range.end)];
+  const conditions = [gte(orders.actualPostedAt, range.start), lt(orders.actualPostedAt, range.end)];
   if (projectId) conditions.push(eq(orders.projectId, projectId));
   const rows = await db.select({ materialId: materials.id, name: materials.name, unit: materials.unit, group: materials.group,
     qty: sql<string>`coalesce(sum(${orderItems.qty}), 0)`, amount: sql<string>`coalesce(sum(${orderItems.amount}), 0)` })
@@ -74,14 +74,14 @@ export async function getDashboard(me: CurrentUser) {
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const ownOrderScope = me.role === "site" ? eq(orders.createdById, me.id) : undefined;
   const pendingWhere = ownOrderScope ? and(eq(orders.status, "pending"), ownOrderScope) : eq(orders.status, "pending");
-  const approvedWhere = ownOrderScope ? and(eq(orders.status, "approved"), ownOrderScope) : eq(orders.status, "approved");
-  const approvedMonthWhere = ownOrderScope
-    ? and(or(eq(orders.status, "approved"), eq(orders.status, "delivered")), gte(sql`coalesce(${orders.approvedAt}, ${orders.deliveredAt})`, monthStart), ownOrderScope)
-    : and(or(eq(orders.status, "approved"), eq(orders.status, "delivered")), gte(sql`coalesce(${orders.approvedAt}, ${orders.deliveredAt})`, monthStart));
-  const [[projectCount], [pendingCount], [approvedCount], [approvedMonth], [materialCount], statusRows] = await Promise.all([
+  const awaitingReceiptWhere = ownOrderScope ? and(eq(orders.status, "approved"), ownOrderScope) : eq(orders.status, "approved");
+  const receivedMonthWhere = ownOrderScope
+    ? and(gte(orders.actualPostedAt, monthStart), ownOrderScope)
+    : gte(orders.actualPostedAt, monthStart);
+  const [[projectCount], [pendingCount], [awaitingReceiptCount], [receivedMonth], [materialCount], statusRows] = await Promise.all([
     db.select({ value: count() }).from(projects), db.select({ value: count() }).from(orders).where(pendingWhere),
-    db.select({ value: count() }).from(orders).where(approvedWhere),
-    db.select({ value: sql<string>`coalesce(sum(${orders.total}), 0)` }).from(orders).where(approvedMonthWhere),
+    db.select({ value: count() }).from(orders).where(awaitingReceiptWhere),
+    db.select({ value: sql<string>`coalesce(sum(${orders.total}), 0)` }).from(orders).where(receivedMonthWhere),
     db.select({ value: count() }).from(materials),
     db.select({ status: orders.status, value: count() }).from(orders).where(ownOrderScope).groupBy(orders.status),
   ]);
@@ -91,8 +91,8 @@ export async function getDashboard(me: CurrentUser) {
     .innerJoin(projects, eq(orders.projectId, projects.id)).innerJoin(createdBy, eq(orders.createdById, createdBy.id))
     .where(ownOrderScope)
     .orderBy(desc(orders.createdAt)).limit(6);
-  return { projectCount: projectCount.value, pendingCount: pendingCount.value, approvedCount: approvedCount.value,
-    materialCount: materialCount.value, approvedMonth: toNumber(approvedMonth.value), statusRows, recentOrders };
+  return { projectCount: projectCount.value, pendingCount: pendingCount.value, awaitingReceiptCount: awaitingReceiptCount.value,
+    materialCount: materialCount.value, receivedMonth: toNumber(receivedMonth.value), statusRows, recentOrders };
 }
 
 function csvCell(value: string | number) { const text = String(value ?? ""); return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text; }
