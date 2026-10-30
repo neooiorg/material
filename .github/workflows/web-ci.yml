@@ -50,10 +50,18 @@ jobs:
       - name: Build web
         run: pnpm web:build
 
-      - name: Build production container
+      - name: Build web production container
         uses: docker/build-push-action@v6
         with:
           context: .
           file: web/Dockerfile
           push: false
           tags: material-web:ci
+
+      - name: Build API production container
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          file: server/Dockerfile
+          push: false
+          tags: material-api:ci
