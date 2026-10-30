@@ -8,9 +8,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { statusText } from "@/lib/format";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 
 export function useApi<T>(path: string | null) {
   const [data, setData] = useState<T | null>(null);
@@ -63,9 +63,5 @@ export function ConfirmButton({ title, description, onConfirm, children = "Xóa"
   return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger render={<Button size="sm" variant="destructive"/>}>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><DialogFooter><DialogClose render={<Button variant="outline"/>}>Hủy</DialogClose><Button variant="destructive" disabled={pending} onClick={() => void confirm()}>{pending ? "Đang xóa…" : "Xóa"}</Button></DialogFooter></DialogContent></Dialog>;
 }
 
-export type Column<T> = { label: string; render: (row: T) => React.ReactNode };
-export function DataGrid<T>({ rows, columns, search, searchText, empty = "Chưa có dữ liệu." }: { rows: T[]; columns: Column<T>[]; search?: string; searchText?: (row: T) => string; empty?: string }) {
-  const [query, setQuery] = useState("");
-  const filtered = searchText ? rows.filter((row) => searchText(row).toLocaleLowerCase("vi").includes(query.toLocaleLowerCase("vi"))) : rows;
-  return <div className="space-y-3">{search && <Input className="max-w-sm" aria-label={search} placeholder={search} value={query} onChange={(event) => setQuery(event.target.value)}/>}<div className="overflow-x-auto rounded-lg border"><Table><TableHeader><TableRow>{columns.map((column) => <TableHead key={column.label}>{column.label}</TableHead>)}</TableRow></TableHeader><TableBody>{filtered.length ? filtered.map((row, index) => <TableRow key={index}>{columns.map((column) => <TableCell key={column.label}>{column.render(row)}</TableCell>)}</TableRow>) : <TableRow><TableCell colSpan={columns.length} className="py-10 text-center text-muted-foreground">{query ? "Không tìm thấy kết quả." : empty}</TableCell></TableRow>}</TableBody></Table></div></div>;
-}
+export type Column<T> = DataTableColumn<T>;
+export const DataGrid = DataTable;
