@@ -45,5 +45,5 @@ export const viewport: Viewport = {
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <html lang="vi" className={manrope.variable}><head><link rel="manifest" href="/manifest.webmanifest?v=so-vat-tu-3" /></head><body className="min-h-screen bg-background font-sans text-foreground antialiased"><TooltipProvider><WebApp />{children}</TooltipProvider><PwaManager/><Toaster richColors position="top-right" /></body></html>;
+  return <html lang="vi" className={manrope.variable}><head><link rel="manifest" href="/pwa-manifest-v3.webmanifest" /></head><body className="min-h-screen bg-background font-sans text-foreground antialiased"><TooltipProvider><WebApp />{children}</TooltipProvider><PwaManager/><Toaster richColors position="top-right" /></body></html>;
 }
