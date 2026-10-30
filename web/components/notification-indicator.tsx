@@ -21,6 +21,6 @@ export function NotificationIndicator() {
   const count = query.data?.unreadCount ?? 0;
   return <Link href="/notifications" className="relative flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:size-9" aria-label={count ? `${count} thông báo chưa đọc` : "Thông báo"}>
     <Bell className="size-5"/>
-    {count > 0 ? <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground tabular-nums">{count > 99 ? "99+" : count}</span> : null}
+    {count > 0 ? <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-red-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm tabular-nums">{count > 99 ? "99+" : count}</span> : null}
   </Link>;
 }
