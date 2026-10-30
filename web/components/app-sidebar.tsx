@@ -91,14 +91,14 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              render={<Link href="/" aria-label="Material — Quản lý vật tư" />}
-              tooltip="Material"
+              render={<Link href="/" aria-label="Sổ Vật Tư — Quản lý vật tư công trình" />}
+              tooltip="Sổ Vật Tư"
             >
               <span className="flex size-8 shrink-0 items-center justify-center">
                 <BrandLogo className="h-8 w-auto" aria-hidden="true" />
               </span>
               <span className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate text-sm font-semibold">Material</span>
+                <span className="truncate text-sm font-semibold">Sổ Vật Tư</span>
                 <span className="truncate text-xs text-sidebar-foreground/70">Quản lý vật tư</span>
               </span>
             </SidebarMenuButton>

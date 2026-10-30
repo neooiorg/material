@@ -1,4 +1,4 @@
-const VERSION = "material-pwa-v1";
+const VERSION = "so-vat-tu-pwa-v2";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const APP_SHELL = [
@@ -82,7 +82,7 @@ self.addEventListener("push", (event) => {
       data = { body: event.data.text() };
     }
   }
-  event.waitUntil(self.registration.showNotification(data.title ?? "Material", {
+  event.waitUntil(self.registration.showNotification(data.title ?? "Sổ Vật Tư", {
     body: data.body ?? "Bạn có cập nhật mới trong hệ thống.",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",

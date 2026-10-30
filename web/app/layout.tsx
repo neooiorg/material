@@ -18,15 +18,15 @@ const manrope = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Material | Quản lý vật tư công trình",
+  title: "Sổ Vật Tư | Quản lý vật tư công trình",
   description: "Đặt vật tư, duyệt đơn, theo dõi công trình và chi phí.",
-  applicationName: "Material",
+  applicationName: "Sổ Vật Tư",
   manifest: "/manifest.webmanifest",
   formatDetection: { telephone: false },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Material",
+    title: "Sổ Vật Tư",
   },
   icons: {
     icon: [

@@ -38,7 +38,7 @@ export function PwaManager() {
     const handleInstalled = () => {
       setInstallPrompt(null);
       setShowIosGuide(false);
-      toast.success("Material đã được cài trên thiết bị.");
+      toast.success("Sổ Vật Tư đã được cài trên thiết bị.");
     };
 
     window.addEventListener("online", handleOnline);
@@ -64,7 +64,7 @@ export function PwaManager() {
       navigator.serviceWorker.register("/sw.js", { scope: "/" }).then((registration) => {
         const offerUpdate = (worker: ServiceWorker | null) => {
           if (!worker) return;
-          toast.info("Có phiên bản Material mới.", {
+          toast.info("Có phiên bản Sổ Vật Tư mới.", {
             duration: Infinity,
             action: {
               label: "Cập nhật",
@@ -117,10 +117,10 @@ export function PwaManager() {
     ) : null}
 
     {installPrompt ? (
-      <aside className="pwa-install-panel" aria-label="Cài ứng dụng Material">
+      <aside className="pwa-install-panel" aria-label="Cài ứng dụng Sổ Vật Tư">
         <BrandLogo className="h-9 w-auto shrink-0" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Cài Material trên thiết bị</p>
+          <p className="text-sm font-semibold">Cài Sổ Vật Tư trên thiết bị</p>
           <p className="mt-0.5 text-xs text-muted-foreground">Mở nhanh như ứng dụng và dùng được giao diện cơ bản khi mất mạng.</p>
         </div>
         <Button size="sm" onClick={() => void install()}><Download aria-hidden="true" />Cài đặt</Button>
@@ -128,10 +128,10 @@ export function PwaManager() {
     ) : null}
 
     {showIosGuide ? (
-      <aside className="pwa-install-panel" aria-label="Hướng dẫn cài Material trên iPhone hoặc iPad">
+      <aside className="pwa-install-panel" aria-label="Hướng dẫn cài Sổ Vật Tư trên iPhone hoặc iPad">
         <Share2 className="size-5 shrink-0 text-primary" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Cài Material trên iPhone/iPad</p>
+          <p className="text-sm font-semibold">Cài Sổ Vật Tư trên iPhone/iPad</p>
           <p className="mt-0.5 text-xs text-muted-foreground">Mở bằng Safari, chạm Chia sẻ rồi chọn “Thêm vào Màn hình chính”.</p>
         </div>
         <Button size="icon" variant="ghost" onClick={dismissIosGuide} aria-label="Đóng hướng dẫn cài đặt"><X aria-hidden="true" /></Button>

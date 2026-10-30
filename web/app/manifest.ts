@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Material — Quản lý vật tư",
-    short_name: "Material",
+    name: "Sổ Vật Tư — Quản lý vật tư công trình",
+    short_name: "Sổ Vật Tư",
     description: "Đặt vật tư, duyệt đơn, theo dõi công trình và chi phí.",
     lang: "vi",
     start_url: "/?source=pwa",

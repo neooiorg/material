@@ -1,4 +1,4 @@
-# Material Web
+# Sổ Vật Tư Web
 
 Giao diện Next.js dùng shadcn/ui, chạy song song với Expo mobile và dùng chung Express API, Better Auth, database.
 

@@ -157,7 +157,7 @@ export function WebApp() {
       <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <SidebarTrigger className="-ml-1" />
-          <span className="truncate text-sm font-medium">{current?.label ?? "Material"}</span>
+          <span className="truncate text-sm font-medium">{current?.label ?? "Sổ Vật Tư"}</span>
         </div>
         <Link href="/notifications" className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label="Thông báo"><Bell className="size-5"/></Link>
       </header>
