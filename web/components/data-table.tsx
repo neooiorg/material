@@ -45,6 +45,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -415,11 +416,14 @@ export function DataTable<T>({
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="icon" aria-label="Tùy chỉnh cột" title="Tùy chỉnh cột"/>}><Settings2 /></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuLabel>Hiển thị cột</DropdownMenuLabel><DropdownMenuSeparator />
-              {table.getAllLeafColumns().filter((column) => column.id !== "select" && column.getCanHide()).map((column) => {
-                const definition = normalizedColumns.find((item) => item.id === column.id);
-                return <DropdownMenuCheckboxItem key={column.id} checked={column.getIsVisible()} onCheckedChange={(checked) => column.toggleVisibility(Boolean(checked))}>{definition?.label ?? column.id}</DropdownMenuCheckboxItem>;
-              })}
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Hiển thị cột</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {table.getAllLeafColumns().filter((column) => column.id !== "select" && column.getCanHide()).map((column) => {
+                  const definition = normalizedColumns.find((item) => item.id === column.id);
+                  return <DropdownMenuCheckboxItem key={column.id} checked={column.getIsVisible()} onCheckedChange={(checked) => column.toggleVisibility(Boolean(checked))}>{definition?.label ?? column.id}</DropdownMenuCheckboxItem>;
+                })}
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
