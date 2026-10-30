@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { WebApp } from "@/components/web-app";
 import "./globals.css";
 import { PwaManager } from "@/components/pwa-manager";
 
@@ -45,5 +46,5 @@ export const viewport: Viewport = {
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <html lang="vi" className={manrope.variable}><body className="min-h-screen bg-background font-sans text-foreground antialiased"><TooltipProvider>{children}</TooltipProvider><PwaManager/><Toaster richColors position="top-right" /></body></html>;
+  return <html lang="vi" className={manrope.variable}><body className="min-h-screen bg-background font-sans text-foreground antialiased"><TooltipProvider><WebApp />{children}</TooltipProvider><PwaManager/><Toaster richColors position="top-right" /></body></html>;
 }
