@@ -194,3 +194,23 @@
     scroll-behavior: auto !important;
   }
 }
+
+.docs-diagram-shell:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  border: 0;
+  border-radius: 0;
+  background: var(--background);
+}
+
+.docs-diagram-shell .cluster rect {
+  rx: 14px;
+  ry: 14px;
+}
+
+.docs-diagram-shell .node rect,
+.docs-diagram-shell .node polygon,
+.docs-diagram-shell .node path {
+  filter: drop-shadow(0 8px 12px color-mix(in oklch, var(--foreground) 8%, transparent));
+}

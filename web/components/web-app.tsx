@@ -141,7 +141,13 @@ export function WebApp() {
     catch { setUser(null); }
     finally { setLoading(false); }
   }
-  useEffect(() => { void loadUser(); }, []);
+  useEffect(() => {
+    if (pathname === "/docs") {
+      setLoading(false);
+      return;
+    }
+    void loadUser();
+  }, [pathname]);
   if (pathname === "/docs") return <div className="mx-auto max-w-5xl p-4 py-10 md:p-8"><Docs/></div>;
   if (loading) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Đang mở hệ thống…</div>;
   if (!user) return <Login onLogin={loadUser}/>;
