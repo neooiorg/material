@@ -13,7 +13,6 @@ import {
   History,
   LayoutDashboard,
   LogOut,
-  PackagePlus,
   Scale,
   Users,
   Wallet,
@@ -46,7 +45,6 @@ import { BrandLogo } from "@/components/brand-logo";
 
 export const nav = [
   { href: "/", label: "Tổng quan", icon: LayoutDashboard, roles: ["admin", "site", "accountant"], group: "Vận hành" },
-  { href: "/orders/new", label: "Tạo đơn vật tư", icon: PackagePlus, roles: ["admin", "site"], group: "Vận hành" },
   { href: "/orders", label: "Đơn đặt vật tư", icon: ClipboardList, roles: ["admin", "site", "accountant"], group: "Vận hành" },
   { href: "/approvals", label: "Duyệt đơn", icon: ClipboardCheck, roles: ["admin"], group: "Vận hành" },
   { href: "/projects", label: "Tổng hợp công trình", icon: Building2, roles: ["admin", "site", "accountant"], group: "Vận hành" },
