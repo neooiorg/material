@@ -19,7 +19,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { money } from "@/lib/format";
+import { compactMoney, money } from "@/lib/format";
 
 const statusLabels: Record<string, string> = {
   pending: "Chờ duyệt",
@@ -117,7 +117,7 @@ export function MaterialComparisonChart({ rows }: { rows: { name: string; budget
         <BarChart accessibilityLayer data={data} layout="vertical" margin={{ left: 8, right: 8 }}>
           <CartesianGrid horizontal={false}/>
           <XAxis type="number" hide/>
-          <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} width={110} tickFormatter={(value) => String(value).length > 16 ? `${String(value).slice(0, 15)}…` : String(value)}/>
+          <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} width={92} tickFormatter={(value) => String(value).length > 13 ? `${String(value).slice(0, 12)}…` : String(value)}/>
           <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(value, name) => <div className="flex min-w-40 items-center justify-between gap-4"><span className="text-muted-foreground">{financeConfig[String(name) as keyof typeof financeConfig]?.label}</span><strong className="font-medium tabular-nums">{money(Number(value))}</strong></div>}/>} />
           <ChartLegend content={<ChartLegendContent/>}/>
           <Bar dataKey="budget" fill="var(--color-budget)" radius={4}/>
@@ -140,13 +140,13 @@ export function GroupCostChart({ rows }: { rows: { name: string; value: number }
     </CardHeader>
     <CardContent>
       {!data.length ? <EmptyChart/> : <>
-        <ChartContainer config={config} className="mx-auto h-64 w-full max-w-md">
+        <ChartContainer config={config} className="mx-auto h-56 w-full max-w-md sm:h-64">
           <PieChart accessibilityLayer>
             <ChartTooltip content={<ChartTooltipContent hideLabel formatter={(value, _name, item) => <div className="flex min-w-44 items-center justify-between gap-4"><span className="text-muted-foreground">{item.payload.name}</span><strong className="font-medium tabular-nums">{money(Number(value))}</strong></div>}/>} />
             <Pie data={data} dataKey="value" nameKey="name" innerRadius={62} outerRadius={90} paddingAngle={2} strokeWidth={0}>
               {data.map((entry, index) => <Cell key={entry.name} fill={palette[index % palette.length]}/>) }
             </Pie>
-            <text x="50%" y="47%" textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-base font-semibold">{money(total)}</text>
+            <text x="50%" y="47%" textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-base font-semibold">{compactMoney(total)}</text>
             <text x="50%" y="57%" textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-xs">tổng chi phí</text>
           </PieChart>
         </ChartContainer>
@@ -160,17 +160,17 @@ export function GroupCostChart({ rows }: { rows: { name: string; value: number }
 
 export function MaterialCostChart({ rows }: { rows: { name: string; amount: number }[] }) {
   const data = [...rows].sort((a, b) => b.amount - a.amount).slice(0, 8);
-  return <Card>
+  return <Card className="h-full">
     <CardHeader>
       <CardTitle>Vật tư có chi phí cao nhất</CardTitle>
       <CardDescription>8 vật tư dẫn đầu trong kỳ đang chọn</CardDescription>
     </CardHeader>
     <CardContent>
-      {!data.length ? <EmptyChart/> : <ChartContainer config={materialConfig} className="h-[22rem] w-full">
+      {!data.length ? <EmptyChart/> : <ChartContainer config={materialConfig} className="h-72 w-full sm:h-[22rem]">
         <BarChart accessibilityLayer data={data} layout="vertical" margin={{ left: 8, right: 8 }}>
           <CartesianGrid horizontal={false}/>
           <XAxis type="number" hide/>
-          <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} width={110} tickFormatter={(value) => String(value).length > 16 ? `${String(value).slice(0, 15)}…` : String(value)}/>
+          <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} width={92} tickFormatter={(value) => String(value).length > 13 ? `${String(value).slice(0, 12)}…` : String(value)}/>
           <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel formatter={(value) => <div className="flex min-w-40 items-center justify-between gap-4"><span className="text-muted-foreground">Chi phí</span><strong className="font-medium tabular-nums">{money(Number(value))}</strong></div>}/>} />
           <Bar dataKey="amount" fill="var(--color-amount)" radius={4}/>
         </BarChart>

@@ -8,9 +8,9 @@ import { api, jsonBody } from "@/lib/api";
 import type { Role } from "@/lib/auth";
 import { date, money, number } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { DataGrid, DataState, Field, NativeSelect, PageTitle, Status, useApi } from "@/components/common";
+import { DataGrid, DataState, Field, MetricCard, NativeSelect, PageTitle, Status, useApi } from "@/components/common";
 import { DashboardStatCard } from "@/components/dashboard-stat-card";
 import { BudgetActualChart, GroupCostChart, MaterialComparisonChart, MaterialCostChart, OrderStatusChart } from "@/components/analytics-charts";
 import { OrderProofs, type OrderProof } from "@/components/receipts";
@@ -69,7 +69,7 @@ export function Orders({ approvals = false, canCreate = false }: { approvals?: b
   const query = useApi<OrderRow[]>(approvals ? "/api/approvals" : "/api/orders");
   const [status, setStatus] = useState("all");
   const rows = (query.data ?? []).filter((row) => status === "all" || row.status === status);
-  return <><PageTitle title={approvals ? "Đơn chờ duyệt" : "Đơn đặt vật tư"} description={approvals ? "Kiểm tra nội dung và duyệt hoặc từ chối từng đơn." : "Theo dõi toàn bộ đơn theo quyền truy cập."} action={canCreate ? <Button render={<Link href="/orders/new"/>}>Tạo đơn</Button> : undefined}/><div className="mb-4 max-w-xs"><NativeSelect label="Trạng thái" value={status} onChange={setStatus} options={[{ value: "all", label: "Tất cả" }, { value: "pending", label: "Chờ duyệt" }, { value: "approved", label: "Chờ nhận hàng" }, { value: "delivered", label: "Đã nhận hàng" }, { value: "rejected", label: "Từ chối" }]}/></div><DataState loading={query.loading} error={query.error} retry={query.refresh}><OrderTable rows={rows}/></DataState></>;
+  return <><PageTitle title={approvals ? "Đơn chờ duyệt" : "Đơn đặt vật tư"} description={approvals ? "Kiểm tra nội dung và duyệt hoặc từ chối từng đơn." : "Theo dõi toàn bộ đơn theo quyền truy cập."} action={canCreate ? <Button render={<Link href="/orders/new"/>}>Tạo đơn</Button> : undefined}/><Card size="sm" className="mb-5 max-w-sm"><CardContent><NativeSelect label="Trạng thái" value={status} onChange={setStatus} options={[{ value: "all", label: "Tất cả" }, { value: "pending", label: "Chờ duyệt" }, { value: "approved", label: "Chờ nhận hàng" }, { value: "delivered", label: "Đã nhận hàng" }, { value: "rejected", label: "Từ chối" }]}/></CardContent></Card><DataState loading={query.loading} error={query.error} retry={query.refresh}><OrderTable rows={rows}/></DataState></>;
 }
 
 type OrderDetailData = OrderRow & { note: string | null; rejectedReason: string | null; approvedAt: string | null; deliveredAt: string | null; receivedByName: string | null; receiptNote: string | null; actualPostedAt: string | null; supplierContact: Contact | null; items: { id: number; name: string; qty: string; unit: string; unitPrice: string; amount: string }[]; timeline: { id: number; summary: string; createdAt: string }[]; proofs: OrderProof[] };
@@ -107,7 +107,7 @@ export function OrderDetail({ id, role }: { id: number; role: Role }) {
       {order ? <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
         <div className="space-y-5">
           <Card>
-            <CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>Thông tin đơn</CardTitle><Status value={order.status} /></div></CardHeader>
+            <CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><CardTitle>Thông tin đơn</CardTitle><Status value={order.status} /></div></CardHeader>
             <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
               <p><span className="text-muted-foreground">Người tạo:</span> {order.creatorName}</p>
               <p><span className="text-muted-foreground">Đơn vị cung cấp:</span> {order.supplierContact?.name ?? "Chưa chọn"}</p>
@@ -175,7 +175,7 @@ export function ProjectDetail({ id }: { id: number }) {
     <DataState loading={query.loading} error={query.error} retry={query.refresh} loadingVariant="dashboard">
       {data && <>
         <div className="grid gap-3 sm:grid-cols-3">
-          {[{ title: "Dự toán", value: data.totalBudget }, { title: "Thực tế", value: data.totalActual }, { title: "Chênh lệch", value: data.totalDiff }].map((item) => <Card key={item.title}><CardContent className="py-5"><p className="text-sm text-muted-foreground">{item.title}</p><strong className="mt-1 block text-xl tabular-nums">{money(item.value)}</strong></CardContent></Card>)}
+          {[{ title: "Dự toán", value: data.totalBudget }, { title: "Thực tế", value: data.totalActual }, { title: "Chênh lệch", value: data.totalDiff }].map((item) => <MetricCard key={item.title} label={item.title} value={money(item.value)}/>)}
         </div>
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
           <BudgetActualChart budget={data.totalBudget} actual={data.totalActual}/>
@@ -183,7 +183,7 @@ export function ProjectDetail({ id }: { id: number }) {
         </div>
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
           <Card><CardHeader><CardTitle>Vật tư còn thiếu theo dự toán</CardTitle></CardHeader><CardContent><DataGrid rows={data.neededMaterials} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "remainingQty", label: "Còn thiếu", accessor: (r) => r.remainingQty, filter: { type: "number" }, render: (r) => `${number(r.remainingQty)} ${r.unit}` }]}/></CardContent></Card>
-          <Card><CardHeader><CardTitle>Đơn vị cung cấp</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">{data.suppliers.length ? data.suppliers.map((contact) => <div key={contact.id} className="flex justify-between border-b pb-2"><span>{contact.name}{data.defaultSupplier?.id === contact.id ? " · Mặc định" : ""}</span><span>{contact.phone}</span></div>) : <p className="text-muted-foreground">Chưa có đơn vị liên quan.</p>}</CardContent></Card>
+          <Card><CardHeader><CardTitle>Đơn vị cung cấp</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">{data.suppliers.length ? data.suppliers.map((contact) => <div key={contact.id} className="grid gap-1 border-b pb-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4"><span className="min-w-0 break-words">{contact.name}{data.defaultSupplier?.id === contact.id ? " · Mặc định" : ""}</span><span className="text-muted-foreground sm:text-foreground">{contact.phone}</span></div>) : <p className="text-muted-foreground">Chưa có đơn vị liên quan.</p>}</CardContent></Card>
         </div>
         <section className="mt-7"><h2 className="mb-3 text-lg font-semibold">Đơn gần đây</h2><OrderTable rows={data.recentOrders}/></section>
       </>}
@@ -197,11 +197,11 @@ export function Reconcile() {
   const [project, setProject] = useState(""); const query = useApi<ReconcileData>(`/api/reconcile${project ? `?projectId=${project}` : ""}`); const data = query.data;
   return <>
     <PageTitle title="Đối chiếu dự toán" description="So sánh số lượng và chi phí thực tế theo công trình."/>
-    <div className="mb-5 max-w-sm"><NativeSelect label="Công trình" value={project || String(data?.selectedId ?? "")} onChange={setProject} options={(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))}/></div>
+    <Card size="sm" className="mb-5 max-w-md"><CardContent><NativeSelect label="Công trình" value={project || String(data?.selectedId ?? "")} onChange={setProject} options={(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))}/></CardContent></Card>
     <DataState loading={query.loading} error={query.error} retry={query.refresh} loadingVariant="dashboard">
       {data && <>
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
-          {[{ label: "Dự toán", value: data.totalBudget }, { label: "Thực tế", value: data.totalActual }, { label: "Chênh lệch", value: data.totalDiff }].map((item) => <Card key={item.label}><CardContent className="py-5"><p className="text-sm text-muted-foreground">{item.label}</p><strong className="text-xl tabular-nums">{money(item.value)}</strong></CardContent></Card>)}
+          {[{ label: "Dự toán", value: data.totalBudget }, { label: "Thực tế", value: data.totalActual }, { label: "Chênh lệch", value: data.totalDiff }].map((item) => <MetricCard key={item.label} label={item.label} value={money(item.value)}/>)}
         </div>
         <div className="mb-6"><MaterialComparisonChart rows={data.rows}/></div>
         <DataGrid rows={data.rows} search="Tìm vật tư" searchText={(r) => `${r.name} ${r.group}`} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "group", label: "Nhóm", accessor: (r) => r.group, filter: { type: "select" }, render: (r) => r.group }, { id: "budgetQty", label: "SL dự toán", accessor: (r) => r.budgetQty, filter: { type: "number" }, render: (r) => `${number(r.budgetQty)} ${r.unit}` }, { id: "actualQty", label: "SL thực tế", accessor: (r) => r.actualQty, filter: { type: "number" }, render: (r) => `${number(r.actualQty)} ${r.unit}` }, { id: "budgetAmount", label: "Tiền dự toán", accessor: (r) => r.budgetAmount, filter: { type: "number" }, render: (r) => money(r.budgetAmount) }, { id: "actualAmount", label: "Tiền thực tế", accessor: (r) => r.actualAmount, filter: { type: "number" }, render: (r) => money(r.actualAmount) }, { id: "difference", label: "Chênh lệch", accessor: (r) => r.actualAmount - r.budgetAmount, filter: { type: "number" }, render: (r) => money(r.actualAmount - r.budgetAmount) }]}/>
@@ -219,35 +219,33 @@ export function Reports() {
   const query = useApi<ReportData>(path);
   const data = query.data;
   async function download() { try { const response = await fetch(`/api/reports/export?month=${month}${project !== "all" ? `&projectId=${project}` : ""}`); if (!response.ok) throw new Error("Không thể xuất CSV."); const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `thong-ke-${month}.csv`; a.click(); URL.revokeObjectURL(url); } catch (e) { toast.error(e instanceof Error ? e.message : "Không thể xuất CSV."); } }
-  return <div className="mx-auto w-full max-w-5xl">
+  return <>
     <PageTitle title="Thống kê chi phí" description="Chi phí vật tư của các đơn đã xác nhận nhận hàng." action={<Button variant="outline" onClick={() => void download()}>Xuất CSV</Button>}/>
-    <div className="mb-6 grid max-w-2xl gap-4 sm:grid-cols-2">
-      <Field label="Tháng" type="month" value={month} onChange={setMonth}/>
-      <NativeSelect label="Công trình" value={project} onChange={setProject} options={[{ value: "all", label: "Tất cả công trình" }, ...(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))]}/>
-    </div>
+    <Card className="mb-6">
+      <CardHeader><CardTitle>Bộ lọc báo cáo</CardTitle><CardDescription>Chọn kỳ thống kê và công trình cần xem.</CardDescription></CardHeader>
+      <CardContent className="grid gap-4 md:max-w-3xl md:grid-cols-2">
+        <Field label="Tháng" type="month" value={month} onChange={setMonth}/>
+        <NativeSelect label="Công trình" value={project} onChange={setProject} options={[{ value: "all", label: "Tất cả công trình" }, ...(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))]}/>
+      </CardContent>
+    </Card>
     <DataState loading={query.loading} error={query.error} retry={query.refresh} loadingVariant="dashboard">
       {data && <>
-        <div className="mb-6 grid gap-5 lg:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.3fr)]">
-          <Card>
-            <CardContent className="flex h-full min-h-36 flex-col justify-center py-6">
-              <p className="text-sm text-muted-foreground">Chi phí đã nhận tháng {data.label}</p>
-              <strong className="mt-2 text-3xl tracking-tight tabular-nums">{money(data.totalCost)}</strong>
-            </CardContent>
-          </Card>
+        <MetricCard label={`Chi phí đã nhận tháng ${data.label}`} value={money(data.totalCost)} detail="Tổng giá trị vật tư của các đơn đã xác nhận nhận hàng."/>
+        <div className="my-6 grid items-stretch gap-5 xl:grid-cols-2">
           <GroupCostChart rows={data.groupData}/>
+          <MaterialCostChart rows={data.materialStats}/>
         </div>
-        <div className="mb-6"><MaterialCostChart rows={data.materialStats}/></div>
-        <DataGrid rows={data.materialStats} search="Tìm vật tư" searchText={(r) => `${r.name} ${r.group}`} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "group", label: "Nhóm", accessor: (r) => r.group, filter: { type: "select" }, render: (r) => r.group }, { id: "qty", label: "Số lượng", accessor: (r) => r.qty, filter: { type: "number" }, render: (r) => `${number(r.qty)} ${r.unit}` }, { id: "amount", label: "Chi phí", accessor: (r) => r.amount, filter: { type: "number" }, render: (r) => money(r.amount) }]}/>
+        <Card><CardHeader><CardTitle>Chi tiết chi phí vật tư</CardTitle><CardDescription>Dữ liệu theo bộ lọc đang chọn, có thể tìm kiếm, lọc và xuất CSV.</CardDescription></CardHeader><CardContent><DataGrid rows={data.materialStats} search="Tìm vật tư" searchText={(r) => `${r.name} ${r.group}`} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "group", label: "Nhóm", accessor: (r) => r.group, filter: { type: "select" }, render: (r) => r.group }, { id: "qty", label: "Số lượng", accessor: (r) => r.qty, filter: { type: "number" }, render: (r) => `${number(r.qty)} ${r.unit}` }, { id: "amount", label: "Chi phí", accessor: (r) => r.amount, filter: { type: "number" }, render: (r) => money(r.amount) }]}/></CardContent></Card>
       </>}
     </DataState>
-  </div>;
+  </>;
 }
 
 type Notification = { id: number; title: string; message: string; orderId: number | null; isRead: boolean; createdAt: string };
 export function Notifications() {
   const query = useApi<Notification[]>("/api/notifications");
   async function mark(ids?: number[]) { try { await api("/api/notifications/read", { method: "PATCH", ...jsonBody(ids ? { ids } : {}) }); query.refresh(); } catch (e) { toast.error(e instanceof Error ? e.message : "Không cập nhật được thông báo."); } }
-  return <><PageTitle title="Thông báo" action={<Button variant="outline" onClick={() => void mark()}>Đánh dấu tất cả đã đọc</Button>}/><DataState loading={query.loading} error={query.error} retry={query.refresh}><div className="space-y-3">{query.data?.length ? query.data.map((item) => <Card key={item.id} className={item.isRead ? "" : "border-primary/40"}><CardContent className="flex flex-wrap items-start justify-between gap-3 py-4"><div><h2 className="font-medium"><Link className="hover:underline" href={`/details/notification/${item.id}`}>{item.title}</Link></h2><p className="mt-1 text-sm text-muted-foreground">{item.message}</p><p className="mt-2 text-xs text-muted-foreground">{date(item.createdAt)}</p></div><div className="flex gap-2">{item.orderId && <Button size="sm" variant="outline" render={<Link href={`/orders/${item.orderId}`}/>}>Xem đơn</Button>}{!item.isRead && <Button size="sm" variant="ghost" onClick={() => void mark([item.id])}>Đã đọc</Button>}</div></CardContent></Card>) : <p className="text-sm text-muted-foreground">Chưa có thông báo.</p>}</div></DataState></>;
+  return <><PageTitle title="Thông báo" action={<Button variant="outline" onClick={() => void mark()}>Đánh dấu tất cả đã đọc</Button>}/><DataState loading={query.loading} error={query.error} retry={query.refresh}><div className="space-y-3">{query.data?.length ? query.data.map((item) => <Card key={item.id} className={item.isRead ? "" : "ring-primary/30"}><CardContent className="flex flex-wrap items-start justify-between gap-3 py-4"><div className="min-w-0 flex-1"><h2 className="font-medium"><Link className="break-words hover:underline" href={`/details/notification/${item.id}`}>{item.title}</Link></h2><p className="mt-1 break-words text-sm text-muted-foreground">{item.message}</p><p className="mt-2 text-xs text-muted-foreground">{date(item.createdAt)}</p></div><div className="flex flex-wrap gap-2">{item.orderId && <Button size="sm" variant="outline" render={<Link href={`/orders/${item.orderId}`}/>}>Xem đơn</Button>}{!item.isRead && <Button size="sm" variant="ghost" onClick={() => void mark([item.id])}>Đã đọc</Button>}</div></CardContent></Card>) : <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">Chưa có thông báo.</CardContent></Card>}</div></DataState></>;
 }
 
 type ActivityRow = { id: number; summary: string; actorName: string; action: string; createdAt: string };

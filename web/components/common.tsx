@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,7 +31,19 @@ export function useApi<T>(path: string | null) {
 }
 
 export function PageTitle({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
-  return <div className="mb-6 flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{title}</h1>{description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}</div>{action}</div>;
+  return <div className="mb-6 flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><h1 className="text-2xl font-semibold tracking-tight text-balance">{title}</h1>{description && <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{description}</p>}</div>{action ? <div className="w-full sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">{action}</div> : null}</div>;
+}
+
+export function MetricCard({ label, value, detail, className }: { label: string; value: React.ReactNode; detail?: string; className?: string }) {
+  return <Card className={className}>
+    <CardHeader className="pb-1">
+      <CardDescription>{label}</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <CardTitle className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{value}</CardTitle>
+      {detail ? <p className="mt-2 text-xs text-muted-foreground">{detail}</p> : null}
+    </CardContent>
+  </Card>;
 }
 
 type LoadingVariant = "table" | "dashboard" | "detail" | "form" | "list";
