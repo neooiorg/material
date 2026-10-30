@@ -1,9 +1,8 @@
-const VERSION = "so-vat-tu-pwa-v2";
+const VERSION = "so-vat-tu-pwa-v3";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const APP_SHELL = [
   "/offline.html",
-  "/manifest.webmanifest",
   "/app-icon.svg",
   "/icons/icon-192.png",
   "/icons/icon-512.png",

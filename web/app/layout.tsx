@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   title: "Sổ Vật Tư | Quản lý vật tư công trình",
   description: "Đặt vật tư, duyệt đơn, theo dõi công trình và chi phí.",
   applicationName: "Sổ Vật Tư",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.webmanifest?v=so-vat-tu-3",
   formatDetection: { telephone: false },
   appleWebApp: {
     capable: true,
