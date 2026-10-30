@@ -9,6 +9,7 @@ import { toNumber } from "../lib/utils.js";
 import { logActivity } from "./activity-service.js";
 import { sendEmail } from "./email-service.js";
 import { listProofs } from "./receipt-service.js";
+import { sendPushNotifications } from "./push-service.js";
 
 type CurrentUser = { id: string; name: string; role: UserRole };
 type NewOrder = { projectId: number; supplierContactId?: number | null; note?: string | null; items?: { materialId: number; qty: number; unitPrice: number }[] };
@@ -96,6 +97,7 @@ export async function createOrder(me: CurrentUser, input: NewOrder) {
   let orderCode = "";
   let projectName = "";
   let adminEmails: string[] = [];
+  let adminIds: string[] = [];
   await db.transaction(async (tx) => {
     const [inserted] = await tx.insert(orders).values({ code: "TMP", projectId: input.projectId,
       supplierId: null, supplierContactId, createdById: me.id, status: "pending", note: input.note || null,
@@ -112,10 +114,17 @@ export async function createOrder(me: CurrentUser, input: NewOrder) {
     projectName = project?.name ?? "";
     adminEmails = admins.map((row) => row.email);
     const recipients = admins.map((row) => row.id);
+    adminIds = recipients;
     if (recipients.length) await tx.insert(notifications).values(recipients.map((userId) => ({ userId,
       title: `Đơn đặt vật tư mới ${code}`, message: `${me.name} vừa tạo đơn ${code} cho công trình "${project?.name ?? ""}".`, orderId: inserted.id })));
     await logActivity(tx, { actorId: me.id, actorName: me.name, action: "order.created", entityType: "order", entityId: inserted.id,
       summary: `${me.name} đã tạo đơn ${code} cho công trình "${project?.name ?? ""}" (${total.toLocaleString("vi-VN")} ₫).` });
+  });
+  await sendPushNotifications(adminIds, {
+    title: `Đơn đặt vật tư mới ${orderCode}`,
+    body: `${me.name} vừa tạo đơn cho công trình "${projectName}".`,
+    url: `/orders/${newOrderId}`,
+    tag: `order-created-${newOrderId}`,
   });
   await Promise.allSettled(adminEmails.map((email) => sendEmail({
     to: email,
@@ -129,6 +138,7 @@ export async function createOrder(me: CurrentUser, input: NewOrder) {
 export async function approveOrder(me: CurrentUser, orderId: number) {
   if (me.role !== "admin") throw new Error("Chỉ quản trị mới được duyệt đơn.");
   let creatorEmail = "";
+  let creatorId = "";
   let code = "";
   await db.transaction(async (tx) => {
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId));
@@ -136,6 +146,7 @@ export async function approveOrder(me: CurrentUser, orderId: number) {
     if (order.status !== "pending") throw new Error("Đơn không ở trạng thái chờ duyệt.");
     const [creatorUser] = await tx.select({ email: user.email }).from(user).where(eq(user.id, order.createdById));
     creatorEmail = creatorUser?.email ?? "";
+    creatorId = order.createdById;
     code = order.code;
     await tx.update(orders).set({ status: "approved", approvedAt: new Date(), approvedById: me.id }).where(eq(orders.id, orderId));
     const recipients = [order.createdById];
@@ -144,6 +155,7 @@ export async function approveOrder(me: CurrentUser, orderId: number) {
     await logActivity(tx, { actorId: me.id, actorName: me.name, action: "order.approved", entityType: "order", entityId: orderId,
       summary: `${me.name} đã duyệt đơn ${order.code}. Đơn đang chờ kỹ thuật xác nhận nhận hàng.` });
   });
+  await sendPushNotifications([creatorId], { title: `Đơn ${code} đã được duyệt`, body: `Đơn ${code} của bạn đã được duyệt và đang chờ nhận hàng.`, url: `/orders/${orderId}`, tag: `order-approved-${orderId}` });
   if (creatorEmail) await sendEmail({
     to: creatorEmail,
     subject: `Đơn ${code} đã được duyệt`,
@@ -155,6 +167,7 @@ export async function approveOrder(me: CurrentUser, orderId: number) {
 export async function rejectOrder(me: CurrentUser, orderId: number, reason: string) {
   if (me.role !== "admin") throw new Error("Chỉ quản trị mới được từ chối đơn.");
   let creatorEmail = "";
+  let creatorId = "";
   let code = "";
   await db.transaction(async (tx) => {
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId));
@@ -162,6 +175,7 @@ export async function rejectOrder(me: CurrentUser, orderId: number, reason: stri
     if (order.status !== "pending") throw new Error("Đơn không ở trạng thái chờ duyệt.");
     const [creatorUser] = await tx.select({ email: user.email }).from(user).where(eq(user.id, order.createdById));
     creatorEmail = creatorUser?.email ?? "";
+    creatorId = order.createdById;
     code = order.code;
     await tx.update(orders).set({ status: "rejected", rejectedReason: reason || null, approvedById: me.id, approvedAt: new Date() }).where(eq(orders.id, orderId));
     await tx.insert(notifications).values({ userId: order.createdById, title: `Đơn ${order.code} bị từ chối`,
@@ -169,6 +183,7 @@ export async function rejectOrder(me: CurrentUser, orderId: number, reason: stri
     await logActivity(tx, { actorId: me.id, actorName: me.name, action: "order.rejected", entityType: "order", entityId: orderId,
       summary: `${me.name} đã từ chối đơn ${order.code}${reason ? `: ${reason}` : "."}` });
   });
+  await sendPushNotifications([creatorId], { title: `Đơn ${code} bị từ chối`, body: `Đơn ${code} đã bị từ chối${reason ? `: ${reason}` : "."}`, url: `/orders/${orderId}`, tag: `order-rejected-${orderId}` });
   if (creatorEmail) await sendEmail({
     to: creatorEmail,
     subject: `Đơn ${code} bị từ chối`,

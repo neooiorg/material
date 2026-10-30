@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Clock3, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Clock3, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { authClient, type AppUser, type Role } from "@/lib/auth";
 import { api, jsonBody } from "@/lib/api";
@@ -23,6 +23,26 @@ import { AppSidebar, nav } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { NotificationIndicator } from "@/components/notification-indicator";
+import { clearPushSubscription } from "@/components/push-notification-settings";
+
+type TestAccount = {
+  email: string;
+  name: string;
+  role: "admin" | "site" | "accountant";
+};
+
+type TestAccountResponse = {
+  password: string;
+  accounts: TestAccount[];
+};
+
+const testRoleLabels: Record<TestAccount["role"], string> = {
+  admin: "Admin",
+  site: "Kỹ thuật",
+  accountant: "Kế toán",
+};
 
 function Login({ onLogin }: { onLogin: () => void }) {
   const [email, setEmail] = useState("");
@@ -30,18 +50,36 @@ function Login({ onLogin }: { onLogin: () => void }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  async function submit(event: React.FormEvent) {
-    event.preventDefault(); setLoading(true);
+  const [testAccounts, setTestAccounts] = useState<TestAccountResponse | null>(null);
+  const [testLoginEmail, setTestLoginEmail] = useState("");
+
+  useEffect(() => {
+    api<TestAccountResponse>("/api/test-accounts").then(setTestAccounts).catch(() => undefined);
+  }, []);
+
+  async function loginWithCredentials(targetEmail: string, targetPassword: string) {
+    const isTestLogin = targetEmail.endsWith("@test.neooi.com");
+    if (isTestLogin) setTestLoginEmail(targetEmail);
+    else setLoading(true);
     try {
-      const result = await authClient.signIn.email({ email, password });
+      const result = await authClient.signIn.email({ email: targetEmail, password: targetPassword });
       if (result.error) throw new Error(result.error.message ?? "Email hoặc mật khẩu không đúng.");
       if ((result.data?.user as { role?: string } | undefined)?.role === "supplier") {
         await authClient.signOut();
         throw new Error("Tài khoản đơn vị cung cấp không sử dụng ứng dụng nội bộ.");
       }
       onLogin();
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Không thể đăng nhập."); }
-    finally { setLoading(false); }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể đăng nhập.");
+    } finally {
+      setLoading(false);
+      setTestLoginEmail("");
+    }
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    await loginWithCredentials(email, password);
   }
   async function signInWithGoogle() {
     if (googleLoading) return;
@@ -117,6 +155,33 @@ function Login({ onLogin }: { onLogin: () => void }) {
             <GoogleMark />
             {googleLoading ? "Đang mở Google…" : "Google"}
           </Button>
+
+          {testAccounts?.accounts.length ? <section className="mt-7 rounded-xl border bg-muted/35 p-4" aria-labelledby="test-accounts-title">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 id="test-accounts-title" className="text-sm font-semibold">Tài khoản thử nghiệm</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Chọn vai trò để đăng nhập một chạm trong giai đoạn kiểm thử.</p>
+              </div>
+              <Badge variant="secondary">Test only</Badge>
+            </div>
+            <div className="mt-4 space-y-2">
+              {testAccounts.accounts.map((account) => <Button
+                key={account.email}
+                type="button"
+                variant="outline"
+                className="h-auto w-full justify-between gap-3 bg-background px-3 py-2.5 text-left"
+                disabled={loading || googleLoading || Boolean(testLoginEmail)}
+                onClick={() => void loginWithCredentials(account.email, testAccounts.password)}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{testRoleLabels[account.role]}</span>
+                  <span className="block truncate text-xs font-normal text-muted-foreground">{account.email}</span>
+                </span>
+                <span className="shrink-0 text-xs font-medium">{testLoginEmail === account.email ? "Đang vào…" : "Đăng nhập"}</span>
+              </Button>)}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">Mật khẩu dùng chung: <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">{testAccounts.password}</code></p>
+          </section> : null}
         </CardContent>
       </Card>
       <p className="mt-6 text-center text-sm text-muted-foreground">
@@ -243,7 +308,7 @@ export function WebApp() {
   if (pathname === "/docs" && !user) return <div className="mx-auto max-w-5xl p-4 py-10 md:p-8"><Docs/></div>;
   if (loading || (!sessionLoaded.current && pathname !== "/docs")) return <AppBootSkeleton/>;
   if (!user) return <Login onLogin={loadUser}/>;
-  if (user.role === "pending") return <AccessGate user={user} onRefresh={loadUser} onSignOut={async () => { await authClient.signOut(); setUser(null); router.push("/"); }}/>;
+  if (user.role === "pending") return <AccessGate user={user} onRefresh={loadUser} onSignOut={async () => { await clearPushSubscription(); await authClient.signOut(); setUser(null); router.push("/"); }}/>;
   const role = user.role;
   const current = nav.find((item) => item.href === pathname) ?? nav.find((item) => pathname.startsWith(item.href + "/") && item.href !== "/");
   return <SidebarProvider>
@@ -251,7 +316,7 @@ export function WebApp() {
       pathname={pathname}
       role={role}
       user={user}
-      onSignOut={async () => { await authClient.signOut(); setUser(null); router.push("/"); }}
+      onSignOut={async () => { await clearPushSubscription(); await authClient.signOut(); setUser(null); router.push("/"); }}
     />
     <SidebarInset className="min-w-0">
       <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:px-6">
@@ -259,7 +324,7 @@ export function WebApp() {
           <SidebarTrigger className="-ml-1" />
           <span className="truncate text-sm font-medium">{current?.label ?? "Sổ Vật Tư"}</span>
         </div>
-        <Link href="/notifications" className="flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:size-9" aria-label="Thông báo"><Bell className="size-5"/></Link>
+        <NotificationIndicator/>
       </header>
       <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-12 md:p-8">{renderPage(pathname, role)}</main>
     </SidebarInset>

@@ -4,6 +4,7 @@ import { requireRoles, requireUser } from "../middleware/auth.js";
 import { uploadOrderProofs } from "../middleware/proof-upload.js";
 
 export const apiRouter = Router();
+apiRouter.get("/test-accounts", api.testAccounts);
 apiRouter.use(requireUser);
 
 apiRouter.get("/session", api.session);
@@ -48,6 +49,10 @@ apiRouter.get("/reports/export", requireRoles("admin", "accountant"), api.report
 apiRouter.get("/notifications/recent", api.notificationRecent);
 apiRouter.get("/notifications", api.notificationList);
 apiRouter.patch("/notifications/read", api.notificationRead);
+apiRouter.get("/push/status", api.pushStatus);
+apiRouter.post("/push/subscribe", api.pushSubscribe);
+apiRouter.delete("/push/subscribe", api.pushUnsubscribe);
+apiRouter.post("/push/test", api.pushTest);
 apiRouter.get("/activity", requireRoles("admin"), api.activityList);
 apiRouter.get("/members", requireRoles("admin"), api.memberList);
 apiRouter.post("/members/invite", requireRoles("admin"), api.memberInvite);

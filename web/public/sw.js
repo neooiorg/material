@@ -1,4 +1,4 @@
-const VERSION = "so-vat-tu-pwa-v3";
+const VERSION = "so-vat-tu-pwa-v4";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const APP_SHELL = [
@@ -85,6 +85,9 @@ self.addEventListener("push", (event) => {
     body: data.body ?? "Bạn có cập nhật mới trong hệ thống.",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
+    tag: data.tag,
+    renotify: Boolean(data.tag),
+    timestamp: Date.now(),
     data: { url: data.url ?? "/notifications" },
   }));
 });

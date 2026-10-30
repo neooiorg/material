@@ -7,10 +7,13 @@ import * as reports from "../services/report-service.js";
 import * as notification from "../services/notification-service.js";
 import * as members from "../services/member-service.js";
 import * as accessRequests from "../services/access-request-service.js";
+import * as push from "../services/push-service.js";
+import { publicTestAccounts } from "../services/test-account-service.js";
 
 const idParam = (request: Request) => Number(request.params.id);
 const me = (request: Request) => request.currentUser!;
 
+export async function testAccounts(_request: Request, response: Response) { response.json(publicTestAccounts()); }
 export async function session(request: Request, response: Response) { response.json({ user: me(request) }); }
 export async function ownAccessRequest(request: Request, response: Response) { response.json(await accessRequests.getOwnAccessRequest(me(request))); }
 export async function accessRequestSubmit(request: Request, response: Response) { response.status(201).json(await accessRequests.submitAccessRequest(me(request), request.body ?? {})); }
@@ -80,6 +83,10 @@ export async function reportExport(request: Request, response: Response) {
 export async function notificationRecent(request: Request, response: Response) { response.json(await notification.recentNotifications(me(request).id)); }
 export async function notificationList(request: Request, response: Response) { response.json(await notification.allNotifications(me(request).id)); }
 export async function notificationRead(request: Request, response: Response) { await orders.markNotificationsRead(me(request), request.body?.ids); response.json({ ok: true }); }
+export async function pushStatus(request: Request, response: Response) { response.json(await push.getPushStatus(me(request).id)); }
+export async function pushSubscribe(request: Request, response: Response) { response.status(201).json(await push.savePushSubscription(me(request).id, request.body ?? {})); }
+export async function pushUnsubscribe(request: Request, response: Response) { response.json(await push.removePushSubscription(me(request).id, request.body?.endpoint)); }
+export async function pushTest(request: Request, response: Response) { response.json(await push.sendTestPush(me(request).id)); }
 export async function activityList(_request: Request, response: Response) { response.json(await listActivity()); }
 export async function memberList(_request: Request, response: Response) { response.json(await members.listMembers()); }
 export async function memberInvite(request: Request, response: Response) { response.status(201).json(await members.inviteMember(me(request), request.body)); }

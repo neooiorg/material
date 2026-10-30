@@ -78,4 +78,24 @@ export async function ensureRuntimeDatabaseCompatibility() {
     )
   `);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS order_proofs_order_id_idx ON order_proofs(order_id)`);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS push_subscriptions_user_id_idx ON push_subscriptions(user_id)`);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS push_vapid_keys (
+      id TEXT PRIMARY KEY,
+      public_key TEXT NOT NULL,
+      private_key TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
 }

@@ -11,6 +11,7 @@ import {
 import { config } from "../config.js";
 import { HttpError } from "../lib/http-error.js";
 import { logActivity } from "./activity-service.js";
+import { sendPushNotifications } from "./push-service.js";
 
 type CurrentUser = { id: string; name: string; role: UserRole };
 const creator = alias(user, "receipt_creator");
@@ -118,10 +119,13 @@ export async function deleteProof(me: CurrentUser, orderId: number, proofId: num
 }
 
 export async function confirmReceipt(me: CurrentUser, orderId: number, note: string) {
+  let recipientIds: string[] = [];
+  let orderCode = "";
   await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT id FROM orders WHERE id = ${orderId} FOR UPDATE`);
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId));
     if (!order) throw new HttpError(404, "Không tìm thấy đơn.");
+    orderCode = order.code;
     if (!canManageOrder(me, order.createdById)) throw new HttpError(403, "Chỉ người tạo đơn hoặc Admin được xác nhận nhận hàng.");
     if (order.status === "delivered") throw new HttpError(409, "Đơn này đã được xác nhận nhận hàng.");
     if (order.status !== "approved") throw new HttpError(409, "Đơn phải được duyệt trước khi xác nhận nhận hàng.");
@@ -142,11 +146,12 @@ export async function confirmReceipt(me: CurrentUser, orderId: number, note: str
       receiptNote: note.trim().slice(0, 2000) || null, actualPostedAt: order.actualPostedAt ?? receivedAt,
     }).where(eq(orders.id, orderId));
     const recipients = await tx.select({ id: user.id }).from(user).where(sql`${user.role} IN ('admin', 'accountant')`);
-    const recipientIds = [...new Set(recipients.map((row) => row.id).filter((id) => id !== me.id))];
+    recipientIds = [...new Set(recipients.map((row) => row.id).filter((id) => id !== me.id))];
     if (recipientIds.length) await tx.insert(notifications).values(recipientIds.map((userId) => ({
       userId, title: `Đơn ${order.code} đã nhận hàng`, message: `${me.name} đã xác nhận nhận hàng và bổ sung chứng từ.`, orderId,
     })));
     await logActivity(tx, { actorId: me.id, actorName: me.name, action: "order.received", entityType: "order", entityId: orderId,
       summary: `${me.name} đã xác nhận nhận hàng cho đơn ${order.code}. Số liệu thực tế được ghi nhận một lần.` });
   });
+  await sendPushNotifications(recipientIds, { title: `Đơn ${orderCode} đã nhận hàng`, body: `${me.name} đã xác nhận nhận hàng và bổ sung chứng từ.`, url: `/orders/${orderId}`, tag: `order-received-${orderId}` });
 }

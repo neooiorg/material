@@ -3,6 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { accessRequests, notifications, user, type UserRole } from "../db/schema.js";
 import { logActivity } from "./activity-service.js";
+import { sendPushNotifications } from "./push-service.js";
 
 type Actor = { id: string; name: string; email: string; role: UserRole };
 type GrantableRole = Extract<UserRole, "admin" | "site" | "accountant">;
@@ -49,6 +50,7 @@ export async function submitAccessRequest(actor: Actor, input: { requestedRole?:
   const role = requestedRole(input.requestedRole);
   const note = cleanNote(input.note);
   const now = new Date();
+  let adminIds: string[] = [];
   await db.transaction(async (tx) => {
     await tx.insert(accessRequests).values({
       id: randomUUID(),
@@ -65,12 +67,14 @@ export async function submitAccessRequest(actor: Actor, input: { requestedRole?:
       set: { requestedRole: role, note, status: "pending", reviewedById: null, reviewedAt: null, updatedAt: now },
     });
     const admins = await tx.select({ id: user.id }).from(user).where(eq(user.role, "admin"));
+    adminIds = admins.map((admin) => admin.id);
     if (admins.length) await tx.insert(notifications).values(admins.map((admin) => ({
       userId: admin.id,
       title: "Yêu cầu phân quyền mới",
       message: `${actor.name} (${actor.email}) đề xuất vai trò ${roleNames[role]}.`,
     })));
   });
+  await sendPushNotifications(adminIds, { title: "Yêu cầu phân quyền mới", body: `${actor.name} (${actor.email}) đề xuất vai trò ${roleNames[role]}.`, url: "/admin/members", tag: `access-request-${actor.id}` });
   return getOwnAccessRequest(actor);
 }
 
@@ -92,6 +96,7 @@ export async function listPendingAccessRequests() {
 
 export async function approveAccessRequest(actor: Actor, id: string, input: { role?: unknown }) {
   const role = grantedRole(input.role);
+  let requesterId = "";
   await db.transaction(async (tx) => {
     const [request] = await tx.update(accessRequests).set({
       status: "approved",
@@ -100,6 +105,7 @@ export async function approveAccessRequest(actor: Actor, id: string, input: { ro
       updatedAt: new Date(),
     }).where(and(eq(accessRequests.id, id), eq(accessRequests.status, "pending"))).returning({ userId: accessRequests.userId });
     if (!request) throw new Error("Yêu cầu không còn ở trạng thái chờ duyệt.");
+    requesterId = request.userId;
     const [requester] = await tx.update(user).set({ role, updatedAt: new Date() }).where(eq(user.id, request.userId)).returning({ name: user.name });
     if (!requester) throw new Error("Không tìm thấy tài khoản yêu cầu.");
     await tx.insert(notifications).values({
@@ -115,9 +121,11 @@ export async function approveAccessRequest(actor: Actor, id: string, input: { ro
       summary: `${actor.name} cấp vai trò ${roleNames[role]} cho ${requester.name}.`,
     });
   });
+  await sendPushNotifications([requesterId], { title: "Yêu cầu quyền đã được duyệt", body: `Bạn đã được cấp vai trò ${roleNames[role]}.`, url: "/", tag: `access-approved-${id}` });
 }
 
 export async function rejectAccessRequest(actor: Actor, id: string) {
+  let requesterId = "";
   await db.transaction(async (tx) => {
     const [request] = await tx.update(accessRequests).set({
       status: "rejected",
@@ -126,6 +134,7 @@ export async function rejectAccessRequest(actor: Actor, id: string) {
       updatedAt: new Date(),
     }).where(and(eq(accessRequests.id, id), eq(accessRequests.status, "pending"))).returning({ userId: accessRequests.userId });
     if (!request) throw new Error("Yêu cầu không còn ở trạng thái chờ duyệt.");
+    requesterId = request.userId;
     await tx.insert(notifications).values({
       userId: request.userId,
       title: "Yêu cầu quyền chưa được chấp thuận",
@@ -139,4 +148,5 @@ export async function rejectAccessRequest(actor: Actor, id: string) {
       summary: `${actor.name} từ chối một yêu cầu phân quyền.`,
     });
   });
+  await sendPushNotifications([requesterId], { title: "Yêu cầu quyền chưa được chấp thuận", body: "Bạn có thể kiểm tra lại thông tin và gửi yêu cầu mới.", url: "/", tag: `access-rejected-${id}` });
 }
