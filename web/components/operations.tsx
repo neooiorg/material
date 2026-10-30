@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { DataGrid, DataState, Field, NativeSelect, PageTitle, Status, useApi } from "@/components/common";
 import { DashboardStatCard } from "@/components/dashboard-stat-card";
+import { BudgetActualChart, GroupCostChart, MaterialComparisonChart, MaterialCostChart, OrderStatusChart } from "@/components/analytics-charts";
 import { OrderProofs, type OrderProof } from "@/components/receipts";
 import { Boxes, Building2, ClipboardCheck, Truck, WalletCards } from "lucide-react";
 
@@ -30,7 +31,7 @@ const statusFilterOptions = [
 ];
 
 export function Dashboard({ role }: { role: Role }) {
-  const query = useApi<{ projectCount: number; pendingCount: number; awaitingReceiptCount: number; materialCount: number; receivedMonth: number; recentOrders: OrderRow[] }>("/api/dashboard");
+  const query = useApi<{ projectCount: number; pendingCount: number; awaitingReceiptCount: number; materialCount: number; receivedMonth: number; statusRows: { status: string; value: number }[]; recentOrders: OrderRow[] }>("/api/dashboard");
   const cards = query.data ? [
     { label: "Công trình", value: query.data.projectCount, href: "/projects", detail: "Xem tổng hợp công trình", badge: "Đang theo dõi", icon: Building2 },
     { label: "Đơn chờ duyệt", value: query.data.pendingCount, href: role === "admin" ? "/approvals" : "/orders", detail: "Xem các đơn đang chờ", badge: query.data.pendingCount > 0 ? "Cần xử lý" : "Đã xử lý", icon: ClipboardCheck, urgent: query.data.pendingCount > 0 },
@@ -44,7 +45,7 @@ export function Dashboard({ role }: { role: Role }) {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => <DashboardStatCard key={card.label} {...card}/>)}
       </div>
-      <div className="mt-4 max-w-xl">
+      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
         <DashboardStatCard
           label="Giá trị đã nhận trong tháng"
           value={money(query.data?.receivedMonth)}
@@ -53,6 +54,7 @@ export function Dashboard({ role }: { role: Role }) {
           icon={WalletCards}
           href={role === "site" ? "/orders" : "/reports"}
         />
+        <OrderStatusChart rows={query.data?.statusRows ?? []}/>
       </div>
       <section className="mt-8"><h2 className="mb-3 text-lg font-semibold">Đơn gần đây</h2><OrderTable rows={query.data?.recentOrders ?? []}/></section>
     </DataState>
@@ -168,14 +170,44 @@ export function Projects() {
 type ProjectSummary = { project: Project; totalBudget: number; totalActual: number; totalDiff: number; suppliers: Contact[]; defaultSupplier: Contact | null; statusRows: { status: string; value: number }[]; recentOrders: OrderRow[]; neededMaterials: { materialId: number; name: string; unit: string; remainingQty: number; budgetQty: number; actualQty: number }[] };
 export function ProjectDetail({ id }: { id: number }) {
   const query = useApi<ProjectSummary>(`/api/projects/${id}/summary`); const data = query.data;
-  return <><PageTitle title={data?.project.name ?? "Công trình"} description={data ? `${data.project.code} · ${data.project.address ?? ""}` : undefined} action={<Button variant="outline" render={<Link href="/projects"/>}>Danh sách công trình</Button>}/><DataState loading={query.loading} error={query.error} retry={query.refresh}>{data && <><div className="grid gap-3 sm:grid-cols-3">{[{ title: "Dự toán", value: data.totalBudget }, { title: "Thực tế", value: data.totalActual }, { title: "Chênh lệch", value: data.totalDiff }].map((item) => <Card key={item.title}><CardContent className="py-5"><p className="text-sm text-muted-foreground">{item.title}</p><strong className="mt-1 block text-xl">{money(item.value)}</strong></CardContent></Card>)}</div><div className="mt-6 grid gap-5 lg:grid-cols-2"><Card><CardHeader><CardTitle>Vật tư còn thiếu theo dự toán</CardTitle></CardHeader><CardContent><DataGrid rows={data.neededMaterials} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "remainingQty", label: "Còn thiếu", accessor: (r) => r.remainingQty, filter: { type: "number" }, render: (r) => `${number(r.remainingQty)} ${r.unit}` }]}/></CardContent></Card><Card><CardHeader><CardTitle>Đơn vị cung cấp</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">{data.suppliers.length ? data.suppliers.map((contact) => <div key={contact.id} className="flex justify-between border-b pb-2"><span>{contact.name}{data.defaultSupplier?.id === contact.id ? " · Mặc định" : ""}</span><span>{contact.phone}</span></div>) : <p className="text-muted-foreground">Chưa có đơn vị liên quan.</p>}</CardContent></Card></div><section className="mt-7"><h2 className="mb-3 text-lg font-semibold">Đơn gần đây</h2><OrderTable rows={data.recentOrders}/></section></>}</DataState></>;
+  return <>
+    <PageTitle title={data?.project.name ?? "Công trình"} description={data ? `${data.project.code} · ${data.project.address ?? ""}` : undefined} action={<Button variant="outline" render={<Link href="/projects"/>}>Danh sách công trình</Button>}/>
+    <DataState loading={query.loading} error={query.error} retry={query.refresh} loadingVariant="dashboard">
+      {data && <>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[{ title: "Dự toán", value: data.totalBudget }, { title: "Thực tế", value: data.totalActual }, { title: "Chênh lệch", value: data.totalDiff }].map((item) => <Card key={item.title}><CardContent className="py-5"><p className="text-sm text-muted-foreground">{item.title}</p><strong className="mt-1 block text-xl tabular-nums">{money(item.value)}</strong></CardContent></Card>)}
+        </div>
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          <BudgetActualChart budget={data.totalBudget} actual={data.totalActual}/>
+          <OrderStatusChart rows={data.statusRows}/>
+        </div>
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          <Card><CardHeader><CardTitle>Vật tư còn thiếu theo dự toán</CardTitle></CardHeader><CardContent><DataGrid rows={data.neededMaterials} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "remainingQty", label: "Còn thiếu", accessor: (r) => r.remainingQty, filter: { type: "number" }, render: (r) => `${number(r.remainingQty)} ${r.unit}` }]}/></CardContent></Card>
+          <Card><CardHeader><CardTitle>Đơn vị cung cấp</CardTitle></CardHeader><CardContent className="space-y-3 text-sm">{data.suppliers.length ? data.suppliers.map((contact) => <div key={contact.id} className="flex justify-between border-b pb-2"><span>{contact.name}{data.defaultSupplier?.id === contact.id ? " · Mặc định" : ""}</span><span>{contact.phone}</span></div>) : <p className="text-muted-foreground">Chưa có đơn vị liên quan.</p>}</CardContent></Card>
+        </div>
+        <section className="mt-7"><h2 className="mb-3 text-lg font-semibold">Đơn gần đây</h2><OrderTable rows={data.recentOrders}/></section>
+      </>}
+    </DataState>
+  </>;
 }
 
 type ReconcileRow = { materialId: number; name: string; unit: string; group: string; budgetQty: number; budgetAmount: number; actualQty: number; actualAmount: number };
 type ReconcileData = { projects: Project[]; selectedId: number | null; rows: ReconcileRow[]; totalBudget: number; totalActual: number; totalDiff: number };
 export function Reconcile() {
   const [project, setProject] = useState(""); const query = useApi<ReconcileData>(`/api/reconcile${project ? `?projectId=${project}` : ""}`); const data = query.data;
-  return <><PageTitle title="Đối chiếu dự toán" description="So sánh số lượng và chi phí thực tế theo công trình."/><div className="mb-5 max-w-sm"><NativeSelect label="Công trình" value={project || String(data?.selectedId ?? "")} onChange={setProject} options={(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))}/></div><DataState loading={query.loading} error={query.error} retry={query.refresh}>{data && <><div className="mb-5 grid gap-3 sm:grid-cols-3">{[{ label: "Dự toán", value: data.totalBudget }, { label: "Thực tế", value: data.totalActual }, { label: "Chênh lệch", value: data.totalDiff }].map((item) => <Card key={item.label}><CardContent className="py-5"><p className="text-sm text-muted-foreground">{item.label}</p><strong className="text-xl">{money(item.value)}</strong></CardContent></Card>)}</div><DataGrid rows={data.rows} search="Tìm vật tư" searchText={(r) => `${r.name} ${r.group}`} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "group", label: "Nhóm", accessor: (r) => r.group, filter: { type: "select" }, render: (r) => r.group }, { id: "budgetQty", label: "SL dự toán", accessor: (r) => r.budgetQty, filter: { type: "number" }, render: (r) => `${number(r.budgetQty)} ${r.unit}` }, { id: "actualQty", label: "SL thực tế", accessor: (r) => r.actualQty, filter: { type: "number" }, render: (r) => `${number(r.actualQty)} ${r.unit}` }, { id: "budgetAmount", label: "Tiền dự toán", accessor: (r) => r.budgetAmount, filter: { type: "number" }, render: (r) => money(r.budgetAmount) }, { id: "actualAmount", label: "Tiền thực tế", accessor: (r) => r.actualAmount, filter: { type: "number" }, render: (r) => money(r.actualAmount) }, { id: "difference", label: "Chênh lệch", accessor: (r) => r.actualAmount - r.budgetAmount, filter: { type: "number" }, render: (r) => money(r.actualAmount - r.budgetAmount) }]}/></>}</DataState></>;
+  return <>
+    <PageTitle title="Đối chiếu dự toán" description="So sánh số lượng và chi phí thực tế theo công trình."/>
+    <div className="mb-5 max-w-sm"><NativeSelect label="Công trình" value={project || String(data?.selectedId ?? "")} onChange={setProject} options={(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))}/></div>
+    <DataState loading={query.loading} error={query.error} retry={query.refresh} loadingVariant="dashboard">
+      {data && <>
+        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+          {[{ label: "Dự toán", value: data.totalBudget }, { label: "Thực tế", value: data.totalActual }, { label: "Chênh lệch", value: data.totalDiff }].map((item) => <Card key={item.label}><CardContent className="py-5"><p className="text-sm text-muted-foreground">{item.label}</p><strong className="text-xl tabular-nums">{money(item.value)}</strong></CardContent></Card>)}
+        </div>
+        <div className="mb-6"><MaterialComparisonChart rows={data.rows}/></div>
+        <DataGrid rows={data.rows} search="Tìm vật tư" searchText={(r) => `${r.name} ${r.group}`} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "group", label: "Nhóm", accessor: (r) => r.group, filter: { type: "select" }, render: (r) => r.group }, { id: "budgetQty", label: "SL dự toán", accessor: (r) => r.budgetQty, filter: { type: "number" }, render: (r) => `${number(r.budgetQty)} ${r.unit}` }, { id: "actualQty", label: "SL thực tế", accessor: (r) => r.actualQty, filter: { type: "number" }, render: (r) => `${number(r.actualQty)} ${r.unit}` }, { id: "budgetAmount", label: "Tiền dự toán", accessor: (r) => r.budgetAmount, filter: { type: "number" }, render: (r) => money(r.budgetAmount) }, { id: "actualAmount", label: "Tiền thực tế", accessor: (r) => r.actualAmount, filter: { type: "number" }, render: (r) => money(r.actualAmount) }, { id: "difference", label: "Chênh lệch", accessor: (r) => r.actualAmount - r.budgetAmount, filter: { type: "number" }, render: (r) => money(r.actualAmount - r.budgetAmount) }]}/>
+      </>}
+    </DataState>
+  </>;
 }
 
 type ReportData = { month: string; label: string; projects: Project[]; materialStats: { materialId: number; name: string; group: string; unit: string; qty: number; amount: number }[]; totalCost: number; groupData: { name: string; value: number }[] };
@@ -195,18 +227,16 @@ export function Reports() {
     </div>
     <DataState loading={query.loading} error={query.error} retry={query.refresh} loadingVariant="dashboard">
       {data && <>
-        <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.3fr)]">
+        <div className="mb-6 grid gap-5 lg:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.3fr)]">
           <Card>
             <CardContent className="flex h-full min-h-36 flex-col justify-center py-6">
               <p className="text-sm text-muted-foreground">Chi phí đã nhận tháng {data.label}</p>
-              <strong className="mt-2 text-3xl tracking-tight">{money(data.totalCost)}</strong>
+              <strong className="mt-2 text-3xl tracking-tight tabular-nums">{money(data.totalCost)}</strong>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader><CardTitle>Theo nhóm vật tư</CardTitle></CardHeader>
-            <CardContent className="space-y-3">{data.groupData.length ? data.groupData.map((g) => <div key={g.name}><div className="flex justify-between gap-2 text-sm"><span>{g.name}</span><span>{money(g.value)}</span></div><div className="mt-1 h-2 rounded bg-muted"><div className="h-2 rounded bg-primary" style={{ width: `${data.totalCost ? g.value / data.totalCost * 100 : 0}%` }}/></div></div>) : <p className="text-sm text-muted-foreground">Chưa có vật tư được xác nhận trong kỳ.</p>}</CardContent>
-          </Card>
+          <GroupCostChart rows={data.groupData}/>
         </div>
+        <div className="mb-6"><MaterialCostChart rows={data.materialStats}/></div>
         <DataGrid rows={data.materialStats} search="Tìm vật tư" searchText={(r) => `${r.name} ${r.group}`} columns={[{ id: "name", label: "Vật tư", accessor: (r) => r.name, filter: { type: "text" }, render: (r) => <Link className="font-medium text-primary hover:underline" href={`/details/material/${r.materialId}`}>{r.name}</Link> }, { id: "group", label: "Nhóm", accessor: (r) => r.group, filter: { type: "select" }, render: (r) => r.group }, { id: "qty", label: "Số lượng", accessor: (r) => r.qty, filter: { type: "number" }, render: (r) => `${number(r.qty)} ${r.unit}` }, { id: "amount", label: "Chi phí", accessor: (r) => r.amount, filter: { type: "number" }, render: (r) => money(r.amount) }]}/>
       </>}
     </DataState>
