@@ -329,11 +329,11 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {search && (
             <Input
-              className="min-w-56 flex-1 sm:max-w-xs"
+              className="w-full flex-none sm:min-w-56 sm:flex-1 sm:max-w-xs"
               aria-label={search}
               placeholder={search}
               value={query}
@@ -351,7 +351,7 @@ export function DataTable<T>({
                   table.setPageIndex(0);
                 }}
               >
-                <SelectTrigger className="max-w-48"><ListFilter /><SelectValue>{quickFilters[column.id] ? options.find((item) => item.value === quickFilters[column.id])?.label : column.label}</SelectValue></SelectTrigger>
+                <SelectTrigger className="min-w-0 flex-1 sm:max-w-48"><ListFilter /><SelectValue>{quickFilters[column.id] ? options.find((item) => item.value === quickFilters[column.id])?.label : column.label}</SelectValue></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">Tất cả {column.label.toLocaleLowerCase("vi")}</SelectItem>
                   {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
@@ -411,7 +411,7 @@ export function DataTable<T>({
           )}
           {activeFilterCount > 0 && <Button variant="ghost" onClick={resetFilters}><RotateCcw />Đặt lại</Button>}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="icon" aria-label="Xuất CSV" title="Xuất CSV" onClick={exportCsv}><Download /></Button>
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="icon" aria-label="Tùy chỉnh cột" title="Tùy chỉnh cột"/>}><Settings2 /></DropdownMenuTrigger>
@@ -429,7 +429,7 @@ export function DataTable<T>({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border">
+      <div className="hidden overflow-hidden rounded-lg border sm:block">
         <Table>
           <TableHeader>{table.getHeaderGroups().map((group) => <TableRow key={group.id}>{group.headers.map((header) => <TableHead key={header.id} aria-sort={header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : "none"}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>)}</TableRow>)}</TableHeader>
           <TableBody>
@@ -438,15 +438,42 @@ export function DataTable<T>({
         </Table>
       </div>
 
-      <div className="flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
+      <div className="divide-y overflow-hidden rounded-xl border sm:hidden">
+        {table.getRowModel().rows.length ? table.getRowModel().rows.map((row) => (
+          <article key={row.id} className="relative p-4" aria-label={`Dòng ${row.index + 1}`}>
+            <label className="absolute right-1 top-1 flex size-11 items-center justify-center">
+              <Checkbox
+                aria-label="Chọn dòng"
+                checked={row.getIsSelected()}
+                onCheckedChange={(checked) => row.toggleSelected(Boolean(checked))}
+              />
+            </label>
+            <dl className="space-y-3 pr-8">
+              {row.getVisibleCells().filter((cell) => cell.column.id !== "select").map((cell) => {
+                const definition = normalizedColumns.find((column) => column.id === cell.column.id);
+                return (
+                  <div key={cell.id} className="grid min-w-0 grid-cols-[minmax(5.5rem,0.8fr)_minmax(0,1.2fr)] gap-3">
+                    <dt className="text-sm text-muted-foreground">{definition?.label || "Thao tác"}</dt>
+                    <dd className="min-w-0 break-words text-sm font-medium [&_a]:break-all">{flexRender(cell.column.columnDef.cell, cell.getContext())}</dd>
+                  </div>
+                );
+              })}
+            </dl>
+          </article>
+        )) : (
+          <p className="px-4 py-12 text-center text-sm text-muted-foreground">{activeFilterCount ? "Không tìm thấy kết quả phù hợp." : empty}</p>
+        )}
+      </div>
+
+      <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
         <p role="status" className="text-sm text-muted-foreground">{selectedCount ? `${selectedCount} dòng đã chọn` : `${filteredRows.length} dòng`}</p>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <span className="text-sm text-muted-foreground">Số dòng</span>
+        <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+          <span className="sr-only sm:not-sr-only sm:text-sm sm:text-muted-foreground">Số dòng</span>
           <Select value={String(table.getState().pagination.pageSize)} onValueChange={(value) => value && table.setPageSize(Number(value))}>
-            <SelectTrigger><SelectValue>{table.getState().pagination.pageSize}</SelectValue></SelectTrigger>
+            <SelectTrigger aria-label="Số dòng mỗi trang"><SelectValue>{table.getState().pagination.pageSize}</SelectValue></SelectTrigger>
             <SelectContent>{[10, 20, 30, 50].map((size) => <SelectItem key={size} value={String(size)}>{size}</SelectItem>)}</SelectContent>
           </Select>
-          <span className="min-w-24 text-center text-sm">Trang {table.getState().pagination.pageIndex + 1}/{pageCount}</span>
+          <span className="min-w-20 text-center text-sm sm:min-w-24">Trang {table.getState().pagination.pageIndex + 1}/{pageCount}</span>
           <Button variant="outline" size="icon" className="hidden sm:inline-flex" aria-label="Trang đầu" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}><ChevronsLeft /></Button>
           <Button variant="outline" size="icon" aria-label="Trang trước" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}><ChevronLeft /></Button>
           <Button variant="outline" size="icon" aria-label="Trang sau" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}><ChevronRight /></Button>

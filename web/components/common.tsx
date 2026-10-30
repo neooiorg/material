@@ -49,7 +49,7 @@ export function Field({ label, value, onChange, type = "text", required = false,
 
 export function NativeSelect({ label, value, onChange, options, required = false }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[]; required?: boolean }) {
   const id = label.toLowerCase().replace(/\W+/g, "-");
-  return <div className="space-y-1.5"><Label htmlFor={id}>{label}</Label><Select value={value} onValueChange={(next) => onChange(next ?? "")} required={required}><SelectTrigger id={id} className="h-9 w-full"><SelectValue>{options.find((option) => option.value === value)?.label}</SelectValue></SelectTrigger><SelectContent>{options.map((option) => <SelectItem key={option.value || "__empty"} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>;
+  return <div className="space-y-1.5"><Label htmlFor={id}>{label}</Label><Select value={value} onValueChange={(next) => onChange(next ?? "")} required={required}><SelectTrigger id={id} className="h-11 w-full sm:h-9"><SelectValue>{options.find((option) => option.value === value)?.label}</SelectValue></SelectTrigger><SelectContent>{options.map((option) => <SelectItem key={option.value || "__empty"} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>;
 }
 
 export function ConfirmButton({ title, description, onConfirm, children = "Xóa" }: { title: string; description: string; onConfirm: () => void | Promise<void>; children?: React.ReactNode }) {

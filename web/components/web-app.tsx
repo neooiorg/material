@@ -159,7 +159,7 @@ export function WebApp() {
           <SidebarTrigger className="-ml-1" />
           <span className="truncate text-sm font-medium">{current?.label ?? "Sổ Vật Tư"}</span>
         </div>
-        <Link href="/notifications" className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label="Thông báo"><Bell className="size-5"/></Link>
+        <Link href="/notifications" className="flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:size-9" aria-label="Thông báo"><Bell className="size-5"/></Link>
       </header>
       <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-12 md:p-8">{renderPage(pathname, role)}</main>
     </SidebarInset>
