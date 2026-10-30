@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Expand, Focus, LoaderCircle, Maximize2, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageTitle } from "@/components/common";
 
-const diagram = String.raw`
+const allDiagram = String.raw`
 flowchart LR
   START([Đăng nhập Sổ Vật Tư]) --> HOME[Tổng quan theo vai trò]
 
@@ -106,6 +106,98 @@ flowchart LR
   class START,HOME,F_DELIVERED,F_ACTUAL important
 `;
 
+const mainDiagram = String.raw`
+flowchart LR
+  A[Quản trị chuẩn bị<br/>công trình · vật tư · dự toán] --> B[Thi công tạo đơn vật tư]
+  B --> C{Quản trị duyệt đơn}
+  C -->|Từ chối| D[Thi công chỉnh sửa đơn]
+  D --> B
+  C -->|Duyệt| E[Chờ hàng đến công trình]
+  E --> F[Thi công chụp ảnh<br/>hoặc tải phiếu PDF]
+  F --> G[Xác nhận nhận hàng một lần]
+  G --> H[Hệ thống cộng số lượng<br/>và chi phí thực tế]
+  H --> I[Kế toán đối chiếu<br/>thống kê và xuất CSV]
+  G -.-> N[Thông báo Admin và Kế toán]
+  H --> P[Tổng hợp theo công trình]
+
+  classDef admin fill:#eef2ff,stroke:#6366f1,color:#312e81,stroke-width:1.5px
+  classDef site fill:#ecfdf5,stroke:#10b981,color:#065f46,stroke-width:1.5px
+  classDef account fill:#fff7ed,stroke:#f97316,color:#9a3412,stroke-width:1.5px
+  classDef system fill:#f8fafc,stroke:#64748b,color:#334155,stroke-width:1.5px
+  class A,C admin
+  class B,D,E,F,G site
+  class I account
+  class H,N,P system
+`;
+
+const roleDiagrams = {
+  admin: String.raw`
+flowchart TB
+  LOGIN([Đăng nhập]) --> DASH[Tổng quan]
+  DASH --> SETUP[Chuẩn bị dữ liệu]
+  SETUP --> PROJECT[Quản lý công trình]
+  SETUP --> MATERIAL[Quản lý vật tư]
+  SETUP --> SUPPLIER[Đơn vị cung cấp]
+  SETUP --> BUDGET[Dự toán]
+  SETUP --> MEMBER[Thành viên và phân quyền]
+  DASH --> APPROVE[Duyệt hoặc từ chối đơn]
+  APPROVE --> WAIT[Đơn chờ nhận hàng]
+  WAIT --> RECEIVE[Xác nhận thay khi cần]
+  RECEIVE --> PROOF[Thêm hoặc xóa chứng từ sau xác nhận]
+  DASH --> CONTROL[Theo dõi hệ thống]
+  CONTROL --> PROJECT_SUM[Tổng hợp công trình]
+  CONTROL --> RECON[Đối chiếu]
+  CONTROL --> REPORT[Thống kê]
+  CONTROL --> LOG[Nhật ký]
+  CONTROL --> NOTIFY[Thông báo]
+  classDef role fill:#eef2ff,stroke:#6366f1,color:#312e81,stroke-width:1.5px
+  classDef shared fill:#f8fafc,stroke:#64748b,color:#334155,stroke-width:1.5px
+  class LOGIN,DASH,SETUP,PROJECT,MATERIAL,SUPPLIER,BUDGET,MEMBER,APPROVE,WAIT,RECEIVE,PROOF role
+  class CONTROL,PROJECT_SUM,RECON,REPORT,LOG,NOTIFY shared
+`,
+  site: String.raw`
+flowchart TB
+  LOGIN([Đăng nhập]) --> DASH[Tổng quan]
+  DASH --> CREATE[Tạo đơn đặt vật tư]
+  CREATE --> SELECT[Chọn công trình · vật tư<br/>số lượng · nhà cung cấp]
+  SELECT --> SHARE[Gửi nội dung đặt hàng qua Zalo]
+  SELECT --> PENDING[Chờ Admin duyệt]
+  PENDING -->|Từ chối| EDIT[Chỉnh sửa và gửi lại]
+  EDIT --> PENDING
+  PENDING -->|Duyệt| WAIT[Chờ nhận hàng]
+  WAIT --> CAMERA[Chụp ảnh hoặc chọn ảnh / PDF]
+  CAMERA --> CONFIRM[Xác nhận nhận hàng một lần]
+  CONFIRM --> HISTORY[Xem lịch sử và chứng từ]
+  DASH --> PROJECT[Tổng hợp công trình]
+  DASH --> RECON[Đối chiếu]
+  DASH --> NOTIFY[Thông báo]
+  classDef role fill:#ecfdf5,stroke:#10b981,color:#065f46,stroke-width:1.5px
+  classDef shared fill:#f8fafc,stroke:#64748b,color:#334155,stroke-width:1.5px
+  class LOGIN,DASH,CREATE,SELECT,SHARE,PENDING,EDIT,WAIT,CAMERA,CONFIRM,HISTORY role
+  class PROJECT,RECON,NOTIFY shared
+`,
+  accountant: String.raw`
+flowchart TB
+  LOGIN([Đăng nhập]) --> DASH[Tổng quan]
+  DASH --> ORDER[Xem danh sách và chi tiết đơn]
+  ORDER --> PROOF[Xem hoặc tải chứng từ]
+  DASH --> PROJECT[Tổng hợp theo công trình]
+  DASH --> RECON[Đối chiếu dự toán với thực tế]
+  RECON --> RECEIVED[Số liệu chỉ tính khi đã nhận hàng]
+  DASH --> REPORT[Thống kê theo ngày nhận]
+  REPORT --> FILTER[Lọc công trình · thời gian · trạng thái]
+  FILTER --> CSV[Xuất báo cáo CSV]
+  DASH --> NOTIFY[Nhận thông báo đơn đã nhận]
+  classDef role fill:#fff7ed,stroke:#f97316,color:#9a3412,stroke-width:1.5px
+  classDef shared fill:#f8fafc,stroke:#64748b,color:#334155,stroke-width:1.5px
+  class LOGIN,DASH,ORDER,PROOF,RECON,RECEIVED,REPORT,FILTER,CSV role
+  class PROJECT,NOTIFY shared
+`,
+} as const;
+
+type DiagramMode = "main" | "all" | "role";
+type DiagramRole = keyof typeof roleDiagrams;
+
 type View = { x: number; y: number; scale: number };
 const MIN_SCALE = 0.08;
 const MAX_SCALE = 2.5;
@@ -115,10 +207,16 @@ export function Docs() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerId: number; clientX: number; clientY: number; x: number; y: number } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<{ distance: number; scale: number; centerX: number; centerY: number; x: number; y: number } | null>(null);
   const [svg, setSvg] = useState("");
   const [error, setError] = useState("");
   const [view, setView] = useState<View>({ x: 24, y: 24, scale: 0.7 });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mode, setMode] = useState<DiagramMode>("main");
+  const [role, setRole] = useState<DiagramRole>("admin");
+  const activeDiagram = mode === "main" ? mainDiagram : mode === "all" ? allDiagram : roleDiagrams[role];
+  const activeKey = mode === "role" ? `role-${role}` : mode;
 
   const fit = useCallback(() => {
     const viewport = viewportRef.current;
@@ -139,6 +237,8 @@ export function Docs() {
 
   useEffect(() => {
     let active = true;
+    setSvg("");
+    setError("");
     void import("mermaid").then(async ({ default: mermaid }) => {
       mermaid.initialize({
         startOnLoad: false,
@@ -158,7 +258,7 @@ export function Docs() {
         },
       });
       try {
-        const result = await mermaid.render(`material-flow-${id}`, diagram);
+        const result = await mermaid.render(`material-flow-${id}-${activeKey}`, activeDiagram);
         if (!active) return;
         setSvg(result.svg);
         requestAnimationFrame(() => requestAnimationFrame(fit));
@@ -167,7 +267,7 @@ export function Docs() {
       }
     });
     return () => { active = false; };
-  }, [fit, id]);
+  }, [activeDiagram, activeKey, fit, id]);
 
   useEffect(() => {
     const onFullscreen = () => {
@@ -199,19 +299,98 @@ export function Docs() {
     else await viewportRef.current.requestFullscreen();
   }
 
+  function pointerPosition(event: ReactPointerEvent<HTMLElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  }
+
+  function beginPointer(event: ReactPointerEvent<HTMLElement>) {
+    if ((event.target as HTMLElement).closest("button")) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const point = pointerPosition(event);
+    pointersRef.current.set(event.pointerId, point);
+    const points = [...pointersRef.current.values()];
+    if (points.length === 1) {
+      dragRef.current = { pointerId: event.pointerId, clientX: point.x, clientY: point.y, x: view.x, y: view.y };
+      pinchRef.current = null;
+      return;
+    }
+    if (points.length === 2) {
+      const [first, second] = points;
+      pinchRef.current = {
+        distance: Math.hypot(second.x - first.x, second.y - first.y),
+        centerX: (first.x + second.x) / 2,
+        centerY: (first.y + second.y) / 2,
+        scale: view.scale,
+        x: view.x,
+        y: view.y,
+      };
+      dragRef.current = null;
+    }
+  }
+
+  function movePointer(event: ReactPointerEvent<HTMLElement>) {
+    if (!pointersRef.current.has(event.pointerId)) return;
+    event.preventDefault();
+    const point = pointerPosition(event);
+    pointersRef.current.set(event.pointerId, point);
+    const points = [...pointersRef.current.values()];
+    const pinch = pinchRef.current;
+    if (points.length >= 2 && pinch) {
+      const [first, second] = points;
+      const centerX = (first.x + second.x) / 2;
+      const centerY = (first.y + second.y) / 2;
+      const distance = Math.max(1, Math.hypot(second.x - first.x, second.y - first.y));
+      const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, pinch.scale * distance / Math.max(1, pinch.distance)));
+      const diagramX = (pinch.centerX - pinch.x) / pinch.scale;
+      const diagramY = (pinch.centerY - pinch.y) / pinch.scale;
+      setView({ scale, x: centerX - diagramX * scale, y: centerY - diagramY * scale });
+      return;
+    }
+    const drag = dragRef.current;
+    if (points.length === 1 && drag?.pointerId === event.pointerId) {
+      setView((current) => ({ ...current, x: drag.x + point.x - drag.clientX, y: drag.y + point.y - drag.clientY }));
+    }
+  }
+
+  function endPointer(event: ReactPointerEvent<HTMLElement>) {
+    pointersRef.current.delete(event.pointerId);
+    const remaining = [...pointersRef.current.entries()];
+    pinchRef.current = null;
+    if (remaining.length === 1) {
+      const [pointerId, point] = remaining[0];
+      dragRef.current = { pointerId, clientX: point.x, clientY: point.y, x: view.x, y: view.y };
+    } else {
+      dragRef.current = null;
+    }
+  }
+
   return <>
     <PageTitle
       title="Sơ đồ hoạt động Sổ Vật Tư"
-      description="Toàn bộ luồng nghiệp vụ, quyền hạn và điểm phối hợp giữa các vai trò trong một sơ đồ tương tác."
+      description="Xem nhanh luồng chính, mở toàn bộ hệ thống hoặc tập trung vào công việc của từng vai trò."
       action={<Button variant="outline" render={<Link href="/" />}>Về trang chính</Button>}
     />
+
+    <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Chọn loại sơ đồ">
+      <ModeButton active={mode === "main"} onClick={() => setMode("main")}>Luồng chính</ModeButton>
+      <ModeButton active={mode === "all"} onClick={() => setMode("all")}>Toàn hệ thống</ModeButton>
+      <ModeButton active={mode === "role"} onClick={() => setMode("role")}>Theo vai trò</ModeButton>
+    </div>
+
+    {mode === "role" && <div className="mb-4 flex flex-wrap gap-2 border-b pb-4" role="group" aria-label="Chọn vai trò">
+      <RoleButton active={role === "admin"} color="indigo" onClick={() => setRole("admin")}>Quản trị viên</RoleButton>
+      <RoleButton active={role === "site"} color="emerald" onClick={() => setRole("site")}>Bộ phận thi công</RoleButton>
+      <RoleButton active={role === "accountant"} color="orange" onClick={() => setRole("accountant")}>Kế toán</RoleButton>
+    </div>}
 
     <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground" aria-label="Chú giải vai trò">
       <Legend color="bg-indigo-500" label="Quản trị viên" />
       <Legend color="bg-emerald-500" label="Bộ phận thi công" />
       <Legend color="bg-orange-500" label="Kế toán" />
       <Legend color="bg-slate-500" label="Dùng chung và hệ thống" />
-      <span className="ml-auto hidden md:inline">Kéo để di chuyển · cuộn để phóng to</span>
+      <span className="ml-auto hidden md:inline">Kéo để di chuyển · cuộn hoặc chụm hai ngón để thu phóng</span>
     </div>
 
     <section
@@ -228,20 +407,10 @@ export function Docs() {
           return { scale, x: pointerX - (pointerX - current.x) * (scale / current.scale), y: pointerY - (pointerY - current.y) * (scale / current.scale) };
         });
       }}
-      onPointerDown={(event) => {
-        if ((event.target as HTMLElement).closest("button")) return;
-        event.currentTarget.setPointerCapture(event.pointerId);
-        dragRef.current = { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, x: view.x, y: view.y };
-      }}
-      onPointerMove={(event) => {
-        const drag = dragRef.current;
-        if (!drag || drag.pointerId !== event.pointerId) return;
-        setView((current) => ({ ...current, x: drag.x + event.clientX - drag.clientX, y: drag.y + event.clientY - drag.clientY }));
-      }}
-      onPointerUp={(event) => {
-        if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
-      }}
-      onPointerCancel={() => { dragRef.current = null; }}
+      onPointerDown={beginPointer}
+      onPointerMove={movePointer}
+      onPointerUp={endPointer}
+      onPointerCancel={endPointer}
     >
       <div className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-xl border bg-background/95 p-1 shadow-sm" aria-label="Điều khiển sơ đồ">
         <Control icon={Minus} label="Thu nhỏ" onClick={() => zoom(0.8)} />
@@ -262,7 +431,7 @@ export function Docs() {
       />}
 
       <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-lg bg-background/90 px-3 py-1.5 text-center text-xs text-muted-foreground shadow-sm md:hidden">
-        Kéo sơ đồ · dùng nút +/− để thu phóng
+        Kéo để di chuyển · chụm hai ngón để thu phóng
       </div>
     </section>
   </>;
@@ -274,4 +443,17 @@ function Legend({ color, label }: { color: string; label: string }) {
 
 function Control({ icon: Icon, label, onClick }: { icon: typeof Plus; label: string; onClick: () => void }) {
   return <Button type="button" size="icon-sm" variant="ghost" aria-label={label} title={label} onClick={onClick}><Icon aria-hidden="true" /></Button>;
+}
+
+function ModeButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return <Button type="button" variant={active ? "default" : "outline"} aria-pressed={active} onClick={onClick}>{children}</Button>;
+}
+
+function RoleButton({ active, color, onClick, children }: { active: boolean; color: "indigo" | "emerald" | "orange"; onClick: () => void; children: ReactNode }) {
+  const activeClass = {
+    indigo: "border-indigo-500 bg-indigo-50 text-indigo-900 hover:bg-indigo-100",
+    emerald: "border-emerald-500 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
+    orange: "border-orange-500 bg-orange-50 text-orange-900 hover:bg-orange-100",
+  }[color];
+  return <Button type="button" size="sm" variant="outline" className={active ? activeClass : undefined} aria-pressed={active} onClick={onClick}>{children}</Button>;
 }
