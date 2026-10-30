@@ -40,7 +40,7 @@ export function Dashboard({ role }: { role: Role }) {
 
   return <>
     <PageTitle title="Tổng quan" description="Dữ liệu cập nhật trực tiếp từ hệ thống quản lý vật tư." action={role !== "accountant" ? <Button render={<Link href="/orders/new"/>}>Tạo đơn vật tư</Button> : undefined}/>
-    <DataState loading={query.loading} error={query.error} retry={query.refresh}>
+    <DataState loading={query.loading} error={query.error} retry={query.refresh} loadingVariant="dashboard">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => <DashboardStatCard key={card.label} {...card}/>)}
       </div>
@@ -101,7 +101,7 @@ export function OrderDetail({ id, role }: { id: number; role: Role }) {
   const order = query.data;
   return <>
     <PageTitle title={order?.code ?? "Chi tiết đơn"} description={order ? `${order.projectName} · ${date(order.createdAt)}` : undefined} action={<Button variant="outline" render={<Link href="/orders" />}>Danh sách đơn</Button>} />
-    <DataState loading={query.loading} error={query.error} retry={query.refresh}>
+    <DataState loading={query.loading} error={query.error} retry={query.refresh} loadingVariant="detail">
       {order ? <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
         <div className="space-y-5">
           <Card>
@@ -193,7 +193,7 @@ export function Reports() {
       <Field label="Tháng" type="month" value={month} onChange={setMonth}/>
       <NativeSelect label="Công trình" value={project} onChange={setProject} options={[{ value: "all", label: "Tất cả công trình" }, ...(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))]}/>
     </div>
-    <DataState loading={query.loading} error={query.error} retry={query.refresh}>
+    <DataState loading={query.loading} error={query.error} retry={query.refresh} loadingVariant="dashboard">
       {data && <>
         <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.3fr)]">
           <Card>

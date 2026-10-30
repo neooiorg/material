@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, Clock3, Eye, EyeOff, ShieldCheck } from "lucide-react";
@@ -22,6 +22,7 @@ import { Receipts } from "@/components/receipts";
 import { AppSidebar, nav } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { BrandLogo } from "@/components/brand-logo";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function Login({ onLogin }: { onLogin: () => void }) {
   const [email, setEmail] = useState("");
@@ -221,6 +222,7 @@ export function WebApp() {
   const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const sessionLoaded = useRef(false);
   async function loadUser() {
     setLoading(true);
     try { const result = await api<{ user: AppUser }>("/api/session"); setUser(result.user); }
@@ -232,10 +234,12 @@ export function WebApp() {
       setLoading(false);
       return;
     }
+    if (sessionLoaded.current) return;
+    sessionLoaded.current = true;
     void loadUser();
   }, [pathname]);
-  if (pathname === "/docs") return <div className="mx-auto max-w-5xl p-4 py-10 md:p-8"><Docs/></div>;
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Đang mở hệ thống…</div>;
+  if (pathname === "/docs" && !user) return <div className="mx-auto max-w-5xl p-4 py-10 md:p-8"><Docs/></div>;
+  if (loading || (!sessionLoaded.current && pathname !== "/docs")) return <AppBootSkeleton/>;
   if (!user) return <Login onLogin={loadUser}/>;
   if (user.role === "pending") return <AccessGate user={user} onRefresh={loadUser} onSignOut={async () => { await authClient.signOut(); setUser(null); router.push("/"); }}/>;
   const role = user.role;
@@ -278,6 +282,7 @@ function renderPage(pathname: string, role: Role) {
   if (pathname === "/reconcile") return <Reconcile/>;
   if (pathname === "/reports" && role !== "site") return <Reports/>;
   if (pathname === "/notifications") return <Notifications/>;
+  if (pathname === "/docs") return <Docs/>;
   if (pathname === "/history" && role === "admin") return <Activity/>;
   if (pathname === "/admin/projects" && role === "admin") return <AdminCatalog kind="projects"/>;
   if (pathname === "/admin/materials" && role === "admin") return <AdminCatalog kind="materials"/>;
@@ -285,4 +290,17 @@ function renderPage(pathname: string, role: Role) {
   if (pathname === "/admin/budgets" && role === "admin") return <Budgets/>;
   if (pathname === "/admin/members" && role === "admin") return <Members/>;
   return <div><h1 className="text-xl font-semibold">Không tìm thấy trang</h1><Link href="/" className="mt-3 inline-block text-primary underline">Về tổng quan</Link></div>;
+}
+
+function AppBootSkeleton() {
+  return <div className="flex min-h-svh bg-background" aria-busy="true" aria-label="Đang mở hệ thống">
+    <aside className="hidden w-64 shrink-0 border-r p-4 md:block">
+      <div className="flex items-center gap-3 pb-7"><Skeleton className="size-9"/><div className="space-y-2"><Skeleton className="h-4 w-28"/><Skeleton className="h-3 w-20"/></div></div>
+      <div className="space-y-3"><Skeleton className="h-3 w-16"/>{Array.from({ length: 7 }, (_, index) => <Skeleton key={index} className="h-9 w-full"/>)}</div>
+    </aside>
+    <div className="min-w-0 flex-1">
+      <div className="flex h-14 items-center border-b px-4 md:px-6"><Skeleton className="h-5 w-28"/></div>
+      <main className="mx-auto w-full max-w-7xl p-4 md:p-8"><Skeleton className="h-7 w-44"/><Skeleton className="mt-3 h-4 w-72 max-w-full"/><div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-32"/>)}</div></main>
+    </div>
+  </div>;
 }

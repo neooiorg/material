@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { statusText } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function useApi<T>(path: string | null) {
   const [data, setData] = useState<T | null>(null);
@@ -32,10 +33,32 @@ export function PageTitle({ title, description, action }: { title: string; descr
   return <div className="mb-6 flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{title}</h1>{description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}</div>{action}</div>;
 }
 
-export function DataState({ loading, error, children, retry }: { loading: boolean; error: string; children: React.ReactNode; retry?: () => void }) {
-  if (loading) return <div className="grid gap-3" aria-busy="true"><div className="h-20 animate-pulse rounded-lg bg-muted"/><div className="h-64 animate-pulse rounded-lg bg-muted"/></div>;
+type LoadingVariant = "table" | "dashboard" | "detail" | "form" | "list";
+
+export function DataState({ loading, error, children, retry, loadingVariant = "table" }: { loading: boolean; error: string; children: React.ReactNode; retry?: () => void; loadingVariant?: LoadingVariant }) {
+  if (loading) return <ContentSkeleton variant={loadingVariant}/>;
   if (error) return <Card><CardContent className="space-y-3 py-6"><p role="alert" className="text-destructive">{error}</p>{retry && <Button variant="outline" onClick={retry}>Thử lại</Button>}</CardContent></Card>;
   return <>{children}</>;
+}
+
+function ContentSkeleton({ variant }: { variant: LoadingVariant }) {
+  if (variant === "dashboard") return <div className="space-y-5" aria-busy="true" aria-label="Đang tải dữ liệu tổng quan">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-xl border p-5"><Skeleton className="h-4 w-24"/><Skeleton className="mt-5 h-8 w-20"/><Skeleton className="mt-4 h-3 w-32 max-w-full"/></div>)}</div>
+    <div className="grid gap-5 lg:grid-cols-2"><Skeleton className="h-56"/><Skeleton className="h-56"/></div>
+  </div>;
+  if (variant === "detail") return <div className="rounded-xl border px-5" aria-busy="true" aria-label="Đang tải chi tiết">
+    {Array.from({ length: 5 }, (_, index) => <div key={index} className="grid gap-3 border-b py-5 last:border-0 sm:grid-cols-[180px_minmax(0,1fr)]"><Skeleton className="h-4 w-28"/><Skeleton className="h-4 w-full max-w-md"/></div>)}
+  </div>;
+  if (variant === "form") return <div className="space-y-5" aria-busy="true" aria-label="Đang tải biểu mẫu">
+    {Array.from({ length: 2 }, (_, section) => <div key={section} className="rounded-xl border p-5"><Skeleton className="h-5 w-40"/><div className="mt-6 grid gap-4 sm:grid-cols-2">{Array.from({ length: section ? 4 : 2 }, (_, index) => <div key={index} className="space-y-2"><Skeleton className="h-4 w-24"/><Skeleton className="h-10 w-full"/></div>)}</div></div>)}
+  </div>;
+  if (variant === "list") return <div className="space-y-3" aria-busy="true" aria-label="Đang tải danh sách">
+    {Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-xl border p-4"><Skeleton className="h-4 w-48 max-w-full"/><Skeleton className="mt-3 h-3 w-full max-w-xl"/><Skeleton className="mt-2 h-3 w-28"/></div>)}
+  </div>;
+  return <div className="overflow-hidden rounded-xl border" aria-busy="true" aria-label="Đang tải bảng dữ liệu">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4"><Skeleton className="h-9 w-64 max-w-full"/><div className="flex gap-2"><Skeleton className="h-9 w-24"/><Skeleton className="h-9 w-24"/></div></div>
+    <div className="divide-y">{Array.from({ length: 6 }, (_, row) => <div key={row} className="grid grid-cols-[1.2fr_1fr_0.8fr] gap-6 px-4 py-4"><Skeleton className="h-4 w-full"/><Skeleton className="h-4 w-full"/><Skeleton className="h-4 w-3/4"/></div>)}</div>
+  </div>;
 }
 
 export function Status({ value }: { value: string }) {
