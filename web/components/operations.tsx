@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import { BudgetActualChart, GroupCostChart, MaterialComparisonChart, MaterialCos
 import { OrderProofs, type OrderProof } from "@/components/receipts";
 import { Boxes, Building2, ClipboardCheck, Truck, WalletCards } from "lucide-react";
 import { PushNotificationSettings } from "@/components/push-notification-settings";
+import { announceNotificationsChanged, NOTIFICATIONS_CHANGED_EVENT } from "@/components/notification-sync";
 
 type OrderRow = { id: number; code: string; projectName: string; creatorName: string; createdAt: string; status: string; total: string; note?: string; items?: { name: string; qty: string; unit: string }[] };
 type Project = { id: number; code: string; name: string; status: string; address?: string; defaultSupplierContactId?: number | null };
@@ -245,7 +246,11 @@ export function Reports() {
 type Notification = { id: number; title: string; message: string; orderId: number | null; isRead: boolean; createdAt: string };
 export function Notifications() {
   const query = useApi<Notification[]>("/api/notifications");
-  async function mark(ids?: number[]) { try { await api("/api/notifications/read", { method: "PATCH", ...jsonBody(ids ? { ids } : {}) }); query.refresh(); } catch (e) { toast.error(e instanceof Error ? e.message : "Không cập nhật được thông báo."); } }
+  useEffect(() => {
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, query.refresh);
+    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, query.refresh);
+  }, [query.refresh]);
+  async function mark(ids?: number[]) { try { await api("/api/notifications/read", { method: "PATCH", ...jsonBody(ids ? { ids } : {}) }); query.refresh(); announceNotificationsChanged(); } catch (e) { toast.error(e instanceof Error ? e.message : "Không cập nhật được thông báo."); } }
   return <><PageTitle title="Thông báo" action={<Button variant="outline" onClick={() => void mark()}>Đánh dấu tất cả đã đọc</Button>}/><PushNotificationSettings/><DataState loading={query.loading} error={query.error} retry={query.refresh}><div className="space-y-3">{query.data?.length ? query.data.map((item) => <Card key={item.id} className={item.isRead ? "" : "ring-primary/30"}><CardContent className="flex flex-wrap items-start justify-between gap-3 py-4"><div className="min-w-0 flex-1"><h2 className="font-medium"><Link className="break-words hover:underline" href={`/details/notification/${item.id}`}>{item.title}</Link></h2><p className="mt-1 break-words text-sm text-muted-foreground">{item.message}</p><p className="mt-2 text-xs text-muted-foreground">{date(item.createdAt)}</p></div><div className="flex flex-wrap gap-2">{item.orderId && <Button size="sm" variant="outline" render={<Link href={`/orders/${item.orderId}`}/>}>Xem đơn</Button>}{!item.isRead && <Button size="sm" variant="ghost" onClick={() => void mark([item.id])}>Đã đọc</Button>}</div></CardContent></Card>) : <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">Chưa có thông báo.</CardContent></Card>}</div></DataState></>;
 }
 

@@ -1,4 +1,5 @@
 import webpush, { type PushSubscription } from "web-push";
+import { EventEmitter } from "node:events";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { notifications, pushSubscriptions, pushVapidKeys } from "../db/schema.js";
@@ -13,6 +14,18 @@ type PushPayload = { title: string; body: string; url?: string; tag?: string };
 const KEY_ID = "default";
 let initialized = false;
 let publicKey = "";
+const notificationEvents = new EventEmitter();
+notificationEvents.setMaxListeners(0);
+
+export function subscribeToNotificationEvents(userId: string, listener: () => void) {
+  const eventName = `notification:${userId}`;
+  notificationEvents.on(eventName, listener);
+  return () => notificationEvents.off(eventName, listener);
+}
+
+export function publishNotificationEvents(userIds: string[]) {
+  for (const userId of userIds) notificationEvents.emit(`notification:${userId}`);
+}
 
 function validText(value: unknown, max: number) {
   return typeof value === "string" && value.length > 0 && value.length <= max ? value : null;
@@ -64,6 +77,7 @@ export async function removePushSubscription(userId: string, endpoint: unknown) 
 export async function sendPushNotifications(userIds: string[], payload: PushPayload) {
   const ids = [...new Set(userIds.filter(Boolean))];
   if (!ids.length) return 0;
+  publishNotificationEvents(ids);
   await initializePushService();
   const subscriptions = await db.select().from(pushSubscriptions).where(inArray(pushSubscriptions.userId, ids));
   let sent = 0;

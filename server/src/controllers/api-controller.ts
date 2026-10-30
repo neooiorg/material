@@ -82,7 +82,30 @@ export async function reportExport(request: Request, response: Response) {
 }
 export async function notificationRecent(request: Request, response: Response) { response.json(await notification.recentNotifications(me(request).id)); }
 export async function notificationList(request: Request, response: Response) { response.json(await notification.allNotifications(me(request).id)); }
-export async function notificationRead(request: Request, response: Response) { await orders.markNotificationsRead(me(request), request.body?.ids); response.json({ ok: true }); }
+export async function notificationRead(request: Request, response: Response) {
+  await orders.markNotificationsRead(me(request), request.body?.ids);
+  push.publishNotificationEvents([me(request).id]);
+  response.json({ ok: true });
+}
+export function notificationStream(request: Request, response: Response) {
+  response.status(200);
+  response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  response.setHeader("Cache-Control", "no-cache, no-transform");
+  response.setHeader("Connection", "keep-alive");
+  response.setHeader("X-Accel-Buffering", "no");
+  response.flushHeaders();
+
+  const sendChange = () => response.write(`event: notification\ndata: ${JSON.stringify({ changedAt: new Date().toISOString() })}\n\n`);
+  const unsubscribe = push.subscribeToNotificationEvents(me(request).id, sendChange);
+  const heartbeat = setInterval(() => response.write(": heartbeat\n\n"), 20_000);
+  response.write(`event: connected\ndata: {}\n\n`);
+
+  request.on("close", () => {
+    clearInterval(heartbeat);
+    unsubscribe();
+    response.end();
+  });
+}
 export async function pushStatus(request: Request, response: Response) { response.json(await push.getPushStatus(me(request).id)); }
 export async function pushSubscribe(request: Request, response: Response) { response.status(201).json(await push.savePushSubscription(me(request).id, request.body ?? {})); }
 export async function pushUnsubscribe(request: Request, response: Response) { response.json(await push.removePushSubscription(me(request).id, request.body?.endpoint)); }

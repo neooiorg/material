@@ -25,6 +25,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { NotificationIndicator } from "@/components/notification-indicator";
+import { NotificationSync } from "@/components/notification-sync";
 import { clearPushSubscription } from "@/components/push-notification-settings";
 
 type TestAccount = {
@@ -312,6 +313,7 @@ export function WebApp() {
   const role = user.role;
   const current = nav.find((item) => item.href === pathname) ?? nav.find((item) => pathname.startsWith(item.href + "/") && item.href !== "/");
   return <SidebarProvider>
+    <NotificationSync/>
     <AppSidebar
       pathname={pathname}
       role={role}

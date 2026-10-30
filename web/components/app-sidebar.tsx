@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -41,6 +42,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { BrandLogo } from "@/components/brand-logo";
 
@@ -85,6 +87,19 @@ export function AppSidebar({
   onSignOut: () => Promise<void>;
 }) {
   const available = nav.filter((item) => (item.roles as readonly Role[]).includes(role));
+  const { isMobile } = useSidebar();
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
+
+  const profileButton = <>
+    <Avatar>
+      <AvatarFallback>{initials(user.name)}</AvatarFallback>
+    </Avatar>
+    <span className="grid min-w-0 flex-1 text-left leading-tight">
+      <span className="truncate text-sm font-medium">{user.name}</span>
+      <span className="truncate text-xs text-sidebar-foreground/70">{user.email}</span>
+    </span>
+    <ChevronUp className={`ml-auto size-4 opacity-60 transition-transform ${mobileProfileOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+  </>;
 
   return (
     <Sidebar collapsible="icon">
@@ -144,7 +159,31 @@ export function AppSidebar({
         <SidebarSeparator className="mx-0" />
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
+            {isMobile ? <div className="space-y-1">
+              {mobileProfileOpen ? <div id="mobile-profile-actions" className="rounded-lg border border-sidebar-border bg-sidebar-accent/60 p-2" role="region" aria-label="Tùy chọn tài khoản">
+                <div className="min-w-0 px-2 py-1.5">
+                  <p className="truncate text-sm font-medium">{user.name}</p>
+                  <p className="truncate text-xs text-sidebar-foreground/70">{user.email}</p>
+                </div>
+                <button
+                  type="button"
+                  className="mt-1 flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-sm text-destructive outline-none transition-colors active:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                  onClick={() => void onSignOut()}
+                >
+                  <LogOut className="size-4" aria-hidden="true" />
+                  Đăng xuất
+                </button>
+              </div> : null}
+              <SidebarMenuButton
+                size="lg"
+                aria-expanded={mobileProfileOpen}
+                aria-controls="mobile-profile-actions"
+                className="aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground"
+                onClick={() => setMobileProfileOpen((open) => !open)}
+              >
+                {profileButton}
+              </SidebarMenuButton>
+            </div> : <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <SidebarMenuButton
@@ -153,14 +192,7 @@ export function AppSidebar({
                   />
                 }
               >
-                <Avatar>
-                  <AvatarFallback>{initials(user.name)}</AvatarFallback>
-                </Avatar>
-                <span className="grid min-w-0 flex-1 text-left leading-tight">
-                  <span className="truncate text-sm font-medium">{user.name}</span>
-                  <span className="truncate text-xs text-sidebar-foreground/70">{user.email}</span>
-                </span>
-                <ChevronUp className="ml-auto size-4 opacity-60" aria-hidden="true" />
+                {profileButton}
               </DropdownMenuTrigger>
               <DropdownMenuContent side="right" align="end" className="min-w-60">
                 <DropdownMenuGroup>
@@ -177,7 +209,7 @@ export function AppSidebar({
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu>}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

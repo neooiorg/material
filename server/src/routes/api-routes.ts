@@ -48,6 +48,7 @@ apiRouter.get("/reports", requireRoles("admin", "accountant"), api.report);
 apiRouter.get("/reports/export", requireRoles("admin", "accountant"), api.reportExport);
 apiRouter.get("/notifications/recent", api.notificationRecent);
 apiRouter.get("/notifications", api.notificationList);
+apiRouter.get("/notifications/stream", api.notificationStream);
 apiRouter.patch("/notifications/read", api.notificationRead);
 apiRouter.get("/push/status", api.pushStatus);
 apiRouter.post("/push/subscribe", api.pushSubscribe);
