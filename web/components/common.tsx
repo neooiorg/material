@@ -12,6 +12,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { statusText } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 export function useApi<T>(path: string | null) {
   const [data, setData] = useState<T | null>(null);
@@ -70,8 +71,9 @@ export function Field({ label, value, onChange, type = "text", required = false,
   return <div className="space-y-1.5"><Label htmlFor={id}>{label}</Label><Input id={id} value={value} onChange={(event) => onChange(event.target.value)} type={type} required={required} placeholder={placeholder} autoComplete={autoComplete}/></div>;
 }
 
-export function NativeSelect({ label, value, onChange, options, required = false }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[]; required?: boolean }) {
+export function NativeSelect({ label, value, onChange, options, required = false, searchable }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[]; required?: boolean; searchable?: boolean }) {
   const id = label.toLowerCase().replace(/\W+/g, "-");
+  if (searchable ?? options.length > 7) return <SearchableSelect label={label} value={value} onChange={onChange} options={options} required={required} placeholder={options.find((option) => option.value === "")?.label ?? `Chọn ${label.toLocaleLowerCase("vi")}`}/>;
   return <div className="space-y-1.5"><Label htmlFor={id}>{label}</Label><Select value={value} onValueChange={(next) => onChange(next ?? "")} required={required}><SelectTrigger id={id} className="h-11 w-full sm:h-9"><SelectValue>{options.find((option) => option.value === value)?.label}</SelectValue></SelectTrigger><SelectContent>{options.map((option) => <SelectItem key={option.value || "__empty"} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>;
 }
 

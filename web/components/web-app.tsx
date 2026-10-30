@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Dashboard, Orders, OrderDetail, OrderCreate, Projects, ProjectDetail, Reconcile, Reports, Notifications, Activity } from "@/components/operations";
-import { AdminCatalog, Budgets, Members } from "@/components/management";
+import { AdminCatalog, Budgets, Members, ProjectForm } from "@/components/management";
 import { Docs } from "@/components/docs";
 import { Detail, type DetailResource } from "@/components/detail";
 import { Receipts } from "@/components/receipts";
@@ -284,6 +284,9 @@ function renderPage(pathname: string, role: Role) {
   if (pathname === "/notifications") return <Notifications/>;
   if (pathname === "/docs") return <Docs/>;
   if (pathname === "/history" && role === "admin") return <Activity/>;
+  if (pathname === "/admin/projects/new" && role === "admin") return <ProjectForm/>;
+  const projectEditMatch = pathname.match(/^\/admin\/projects\/(\d+)\/edit$/);
+  if (projectEditMatch && role === "admin") return <ProjectForm id={Number(projectEditMatch[1])}/>;
   if (pathname === "/admin/projects" && role === "admin") return <AdminCatalog kind="projects"/>;
   if (pathname === "/admin/materials" && role === "admin") return <AdminCatalog kind="materials"/>;
   if (pathname === "/admin/supplier-contacts" && role === "admin") return <AdminCatalog kind="supplier-contacts"/>;
