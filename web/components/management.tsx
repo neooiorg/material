@@ -17,7 +17,7 @@ type CatalogKind = "projects" | "materials" | "supplier-contacts";
 type CatalogRow = { id: number; code?: string; name: string; address?: string | null; status?: string; unit?: string; group?: string; phone?: string; defaultSupplierContactId?: number | null };
 type Contact = { id: number; name: string; phone: string };
 const title: Record<CatalogKind, string> = { projects: "Quản lý công trình", materials: "Quản lý vật tư", "supplier-contacts": "Đơn vị cung cấp" };
-const blank = { code: "", name: "", address: "", status: "active", unit: "", group: "", phone: "", defaultSupplierContactId: "", supplierContactIds: [] as number[] };
+const blank = { code: "", name: "", address: "", status: "active", unit: "", group: "", phone: "", defaultSupplierContactId: "", supplierContactIds: [] as number[], technicianIds: [] as string[] };
 
 export function AdminCatalog({ kind }: { kind: CatalogKind }) {
   const query = useApi<CatalogRow[]>(`/api/${kind}`);
@@ -34,7 +34,7 @@ export function AdminCatalog({ kind }: { kind: CatalogKind }) {
       try { const detail = await api<{ suppliers: Contact[] }>(`/api/projects/${row.id}/summary`); supplierContactIds = detail.suppliers.map((item) => item.id); }
       catch (error) { toast.error(error instanceof Error ? error.message : "Không tải được liên hệ công trình."); return; }
     }
-    setDraft({ code: row.code ?? "", name: row.name, address: row.address ?? "", status: row.status ?? "active", unit: row.unit ?? "", group: row.group ?? "", phone: row.phone ?? "", defaultSupplierContactId: row.defaultSupplierContactId ? String(row.defaultSupplierContactId) : "", supplierContactIds });
+    setDraft({ code: row.code ?? "", name: row.name, address: row.address ?? "", status: row.status ?? "active", unit: row.unit ?? "", group: row.group ?? "", phone: row.phone ?? "", defaultSupplierContactId: row.defaultSupplierContactId ? String(row.defaultSupplierContactId) : "", supplierContactIds, technicianIds: [] });
     setEditing(row.id); setOpen(true);
   }
   async function save(event: React.FormEvent) {
@@ -74,10 +74,11 @@ export function AdminCatalog({ kind }: { kind: CatalogKind }) {
     ]}/></DataState></>;
 }
 
-type ProjectFormData = { project: CatalogRow; suppliers: Contact[] };
+type ProjectFormData = { project: CatalogRow; suppliers: Contact[]; technicians: { id: string; name: string; email: string }[] };
 export function ProjectForm({ id }: { id?: number }) {
   const router = useRouter();
   const contacts = useApi<Contact[]>("/api/supplier-contacts");
+  const technicians = useApi<{ id: string; name: string; email: string }[]>("/api/technicians");
   const detail = useApi<ProjectFormData>(id ? `/api/projects/${id}/summary` : null);
   const [draft, setDraft] = useState({ ...blank });
   const [saving, setSaving] = useState(false);
@@ -86,25 +87,25 @@ export function ProjectForm({ id }: { id?: number }) {
   useEffect(() => {
     if (!id || !detail.data || loadedId === id) return;
     const project = detail.data.project;
-    setDraft({ ...blank, code: project.code ?? "", name: project.name, address: project.address ?? "", status: project.status ?? "active", defaultSupplierContactId: project.defaultSupplierContactId ? String(project.defaultSupplierContactId) : "", supplierContactIds: detail.data.suppliers.map((supplier) => supplier.id) });
+    setDraft({ ...blank, code: project.code ?? "", name: project.name, address: project.address ?? "", status: project.status ?? "active", defaultSupplierContactId: project.defaultSupplierContactId ? String(project.defaultSupplierContactId) : "", supplierContactIds: detail.data.suppliers.map((supplier) => supplier.id), technicianIds: detail.data.technicians.map((technician) => technician.id) });
     setLoadedId(id);
   }, [detail.data, id, loadedId]);
 
-  function set(key: keyof typeof blank, value: string | number[]) { setDraft((current) => ({ ...current, [key]: value })); }
+  function set(key: keyof typeof blank, value: string | number[] | string[]) { setDraft((current) => ({ ...current, [key]: value })); }
   async function save(event: React.FormEvent) {
     event.preventDefault(); setSaving(true);
     try {
-      await api(`/api/projects${id ? `/${id}` : ""}`, { method: id ? "PATCH" : "POST", ...jsonBody({ code: draft.code, name: draft.name, address: draft.address, status: draft.status, defaultSupplierContactId: draft.defaultSupplierContactId ? Number(draft.defaultSupplierContactId) : null, supplierContactIds: draft.supplierContactIds }) });
+      await api(`/api/projects${id ? `/${id}` : ""}`, { method: id ? "PATCH" : "POST", ...jsonBody({ code: draft.code, name: draft.name, address: draft.address, status: draft.status, defaultSupplierContactId: draft.defaultSupplierContactId ? Number(draft.defaultSupplierContactId) : null, supplierContactIds: draft.supplierContactIds, technicianIds: draft.technicianIds }) });
       toast.success(id ? "Đã cập nhật công trình." : "Đã thêm công trình.");
       router.push("/admin/projects");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Không thể lưu công trình."); }
     finally { setSaving(false); }
   }
 
-  const loading = contacts.loading || Boolean(id && detail.loading);
+  const loading = contacts.loading || technicians.loading || Boolean(id && detail.loading);
   return <>
     <PageTitle title={id ? "Cập nhật công trình" : "Thêm công trình"} description="Thông tin, trạng thái và các đơn vị cung cấp liên quan." action={<Button variant="outline" render={<Link href="/admin/projects"/>}>Quay lại danh sách</Button>}/>
-    <DataState loading={loading} error={contacts.error || detail.error} retry={() => { contacts.refresh(); detail.refresh(); }} loadingVariant="form">
+    <DataState loading={loading} error={contacts.error || technicians.error || detail.error} retry={() => { contacts.refresh(); technicians.refresh(); detail.refresh(); }} loadingVariant="form">
       <form onSubmit={save} className="space-y-6">
         <Card><CardHeader><CardTitle>Thông tin công trình</CardTitle></CardHeader><CardContent className="grid gap-4 sm:grid-cols-2">
           <Field label="Mã công trình" value={draft.code} onChange={(value) => set("code", value)} required/>
@@ -112,6 +113,7 @@ export function ProjectForm({ id }: { id?: number }) {
           <div className="sm:col-span-2"><Field label="Địa chỉ" value={draft.address} onChange={(value) => set("address", value)}/></div>
           <NativeSelect label="Trạng thái" value={draft.status} onChange={(value) => set("status", value)} options={[{ value: "active", label: "Đang thực hiện" }, { value: "completed", label: "Hoàn thành" }, { value: "paused", label: "Tạm dừng" }]}/>
         </CardContent></Card>
+        <Card><CardHeader><CardTitle>Kỹ thuật phụ trách</CardTitle></CardHeader><CardContent><SearchableMultiSelect label="Kỹ thuật được xem và nhận hàng" values={draft.technicianIds} onChange={(values) => set("technicianIds", values)} options={(technicians.data ?? []).map((technician) => ({ value: technician.id, label: `${technician.name} · ${technician.email}` }))}/><p className="mt-2 text-sm text-muted-foreground">Người tạo đơn vẫn xem và xác nhận đơn mình tạo. Kỹ thuật được phân công có thể xem và nhận các đơn thuộc công trình.</p></CardContent></Card>
         <Card><CardHeader><CardTitle>Đơn vị cung cấp</CardTitle></CardHeader><CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2"><SearchableMultiSelect label="Đơn vị liên quan" values={draft.supplierContactIds.map(String)} onChange={(values) => set("supplierContactIds", values.map(Number))} options={(contacts.data ?? []).map((contact) => ({ value: String(contact.id), label: `${contact.name} · ${contact.phone}` }))}/></div>
           <NativeSelect label="Đơn vị mặc định" value={draft.defaultSupplierContactId} onChange={(value) => set("defaultSupplierContactId", value)} options={[{ value: "", label: "Không chọn" }, ...(contacts.data ?? []).filter((contact) => draft.supplierContactIds.includes(contact.id)).map((contact) => ({ value: String(contact.id), label: contact.name }))]} searchable/>

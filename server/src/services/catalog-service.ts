@@ -1,6 +1,6 @@
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { budgets, materials, projectSupplierContacts, projects, supplierContacts, type ProjectStatus } from "../db/schema.js";
+import { budgets, materials, projectSupplierContacts, projectTechnicians, projects, supplierContacts, user, type ProjectStatus } from "../db/schema.js";
 import { toNumber } from "../lib/utils.js";
 import { logActivity } from "./activity-service.js";
 
@@ -21,6 +21,7 @@ export async function getOrderOptions() {
 }
 
 export async function listProjects() { return db.select().from(projects).orderBy(asc(projects.name)); }
+export async function listTechnicians() { return db.select({ id: user.id, name: user.name, email: user.email }).from(user).where(eq(user.role, "site")).orderBy(asc(user.name)); }
 export async function listMaterials() { return db.select().from(materials).orderBy(asc(materials.group), asc(materials.name)); }
 export async function listSupplierContacts() { return db.select().from(supplierContacts).orderBy(asc(supplierContacts.name)); }
 function cleanPhone(value: string) {
@@ -50,15 +51,31 @@ async function setProjectContacts(projectId: number, defaultId: number | null | 
   });
 }
 
-export async function createProject(actor: Actor, input: { code: string; name: string; address?: string; status?: ProjectStatus; defaultSupplierContactId?: number | null; supplierContactIds?: number[] }) {
+async function setProjectTechnicians(projectId: number, ids: string[] | undefined) {
+  if (ids === undefined) return;
+  const selected = [...new Set(ids.filter((id): id is string => typeof id === "string" && Boolean(id)))];
+  const valid = selected.length ? await db.select({ id: user.id }).from(user).where(inArray(user.id, selected)) : [];
+  if (valid.length !== selected.length) throw new Error("Danh sách kỹ thuật không hợp lệ.");
+  const siteUsers = selected.length ? await db.select({ id: user.id }).from(user).where(eq(user.role, "site")) : [];
+  const siteIds = new Set(siteUsers.map((item) => item.id));
+  if (selected.some((id) => !siteIds.has(id))) throw new Error("Chỉ tài khoản kỹ thuật được phân công công trình.");
+  await db.transaction(async (tx) => {
+    await tx.delete(projectTechnicians).where(eq(projectTechnicians.projectId, projectId));
+    if (selected.length) await tx.insert(projectTechnicians).values(selected.map((userId) => ({ projectId, userId })));
+  });
+}
+
+export async function createProject(actor: Actor, input: { code: string; name: string; address?: string; status?: ProjectStatus; defaultSupplierContactId?: number | null; supplierContactIds?: number[]; technicianIds?: string[] }) {
   if (!input.code?.trim() || !input.name?.trim()) throw new Error("Mã và tên công trình là bắt buộc.");
   const [created] = await db.insert(projects).values({ code: input.code.trim(), name: input.name.trim(), address: input.address?.trim() || null, status: input.status ?? "active" }).returning({ id: projects.id });
   await setProjectContacts(created.id, input.defaultSupplierContactId, input.supplierContactIds);
+  await setProjectTechnicians(created.id, input.technicianIds);
   await logActivity(db, { actorId: actor.id, actorName: actor.name, action: "project.created", entityType: "project", summary: `${actor.name} thêm công trình "${input.name.trim()}" (${input.code.trim()}).` });
 }
-export async function updateProject(actor: Actor, id: number, input: { code: string; name: string; address?: string; status: ProjectStatus; defaultSupplierContactId?: number | null; supplierContactIds?: number[] }) {
+export async function updateProject(actor: Actor, id: number, input: { code: string; name: string; address?: string; status: ProjectStatus; defaultSupplierContactId?: number | null; supplierContactIds?: number[]; technicianIds?: string[] }) {
   await db.update(projects).set({ code: input.code.trim(), name: input.name.trim(), address: input.address?.trim() || null, status: input.status }).where(eq(projects.id, id));
   if (input.defaultSupplierContactId !== undefined || input.supplierContactIds !== undefined) await setProjectContacts(id, input.defaultSupplierContactId, input.supplierContactIds);
+  await setProjectTechnicians(id, input.technicianIds);
   await logActivity(db, { actorId: actor.id, actorName: actor.name, action: "project.updated", entityType: "project", entityId: id, summary: `${actor.name} sửa công trình "${input.name.trim()}" (${input.code.trim()}).` });
 }
 export async function deleteProject(actor: Actor, id: number) {

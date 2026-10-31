@@ -45,6 +45,13 @@ export async function ensureRuntimeDatabaseCompatibility() {
   `);
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS access_requests_user_id_uq ON access_requests(user_id)`);
   await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS project_technicians (
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      CONSTRAINT project_technicians_uq UNIQUE (project_id, user_id)
+    )
+  `);
+  await db.execute(sql`
     DO $$
     DECLARE
       actual_posted_column_existed BOOLEAN;

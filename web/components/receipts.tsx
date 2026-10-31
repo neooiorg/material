@@ -50,14 +50,14 @@ type ReceiptOrderItem = { id: number; name: string; unit: string; qty: string; u
 export function Receipts({ role }: { role: Role }) {
   const query = useApi<ReceiptRow[]>("/api/receipts");
   return <>
-    <PageTitle title="Xác nhận nhận hàng" description={role === "site" ? "Các đơn do bạn tạo, đã được duyệt và còn vật tư chờ nhận." : "Các đơn đã duyệt còn vật tư chờ xác nhận nhận hàng."} />
+    <PageTitle title="Xác nhận nhận hàng" description={role === "site" ? "Đơn do bạn tạo hoặc thuộc công trình bạn phụ trách, đã duyệt và còn vật tư chờ nhận." : "Các đơn đã duyệt còn vật tư chờ xác nhận nhận hàng."} />
     <DataState loading={query.loading} error={query.error} retry={query.refresh}>
       {query.data?.length === 0 ? <Card>
         <CardContent className="flex flex-col items-start gap-3 py-8 sm:py-10">
           <PackageCheck className="size-8 text-muted-foreground" aria-hidden="true" />
           <div className="space-y-1">
             <h2 className="font-semibold">Không có đơn chờ nhận hàng</h2>
-            <p className="max-w-xl text-sm text-muted-foreground">{role === "site" ? "Trang này chỉ hiển thị đơn do chính tài khoản của bạn tạo sau khi Admin duyệt. Đơn của kỹ thuật khác không xuất hiện ở đây." : "Các đơn đã duyệt và chưa nhận đủ vật tư sẽ xuất hiện ở đây."}</p>
+            <p className="max-w-xl text-sm text-muted-foreground">{role === "site" ? "Đơn do bạn tạo hoặc thuộc công trình Admin phân công sẽ xuất hiện sau khi được duyệt. Hãy kiểm tra danh sách đơn hoặc liên hệ Admin để được phân công công trình." : "Các đơn đã duyệt và chưa nhận đủ vật tư sẽ xuất hiện ở đây."}</p>
           </div>
           {role === "site" ? <Button variant="outline" render={<Link href="/orders" />}>Xem đơn của tôi</Button> : null}
         </CardContent>

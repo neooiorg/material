@@ -69,6 +69,11 @@ export const projectSupplierContacts = pgTable("project_supplier_contacts", {
   supplierContactId: integer("supplier_contact_id").notNull().references(() => supplierContacts.id, { onDelete: "cascade" }),
 }, (table) => [uniqueIndex("project_supplier_contacts_uq").on(table.projectId, table.supplierContactId)]);
 
+export const projectTechnicians = pgTable("project_technicians", {
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+}, (table) => [uniqueIndex("project_technicians_uq").on(table.projectId, table.userId)]);
+
 export const materials = pgTable("materials", {
   id: serial("id").primaryKey(), code: text("code").notNull().unique(), name: text("name").notNull(),
   unit: text("unit").notNull(), group: text("group").notNull(), createdAt: timestamp("created_at").notNull().defaultNow(),

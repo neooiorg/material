@@ -13,6 +13,7 @@ import { config } from "../config.js";
 import { HttpError } from "../lib/http-error.js";
 import { logActivity } from "./activity-service.js";
 import { sendPushNotifications } from "./push-service.js";
+import { canAccessProject, siteOrderScope } from "./project-access-service.js";
 
 type CurrentUser = { id: string; name: string; role: UserRole };
 const creator = alias(user, "receipt_creator");
@@ -20,8 +21,8 @@ const uploader = alias(user, "proof_uploader");
 const receiver = alias(user, "receipt_receiver");
 const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 
-function canManageOrder(me: CurrentUser, createdById: string) {
-  return me.role === "admin" || (me.role === "site" && me.id === createdById);
+async function canManageOrder(me: CurrentUser, order: { createdById: string; projectId: number }) {
+  return me.role === "admin" || (me.role === "site" && (me.id === order.createdById || await canAccessProject(me.id, order.projectId)));
 }
 
 async function getOrderForAction(orderId: number) {
@@ -44,7 +45,7 @@ function proofPath(storedName: string) {
 
 export async function listReceipts(me: CurrentUser) {
   const where = me.role === "site"
-    ? and(eq(orders.status, "approved"), eq(orders.createdById, me.id))
+    ? and(eq(orders.status, "approved"), siteOrderScope(me.id))
     : eq(orders.status, "approved");
   return db.select({
     id: orders.id, code: orders.code, projectName: projects.name, creatorName: creator.name,
@@ -62,7 +63,7 @@ export async function listReceipts(me: CurrentUser) {
 
 export async function listProofs(me: CurrentUser, orderId: number) {
   const order = await getOrderForAction(orderId);
-  if (me.role === "site" && order.createdById !== me.id) throw new HttpError(403, "Bạn không có quyền xem chứng từ của đơn này.");
+  if (me.role === "site" && !(await canManageOrder(me, order))) throw new HttpError(403, "Bạn không có quyền xem chứng từ của đơn này.");
   return db.select({
     id: orderProofs.id, receiptId: orderProofs.receiptId, originalName: orderProofs.originalName, mimeType: orderProofs.mimeType,
     size: orderProofs.size, createdAt: orderProofs.createdAt, uploaderName: uploader.name,
@@ -72,7 +73,7 @@ export async function listProofs(me: CurrentUser, orderId: number) {
 
 export async function listReceiptEvents(me: CurrentUser, orderId: number) {
   const order = await getOrderForAction(orderId);
-  if (me.role === "site" && order.createdById !== me.id) throw new HttpError(403, "Bạn không có quyền xem lịch sử nhận hàng của đơn này.");
+  if (me.role === "site" && !(await canManageOrder(me, order))) throw new HttpError(403, "Bạn không có quyền xem lịch sử nhận hàng của đơn này.");
   const events = await db.select({
     id: orderReceipts.id, sequence: orderReceipts.sequence, receivedAt: orderReceipts.receivedAt,
     note: orderReceipts.note, isFinal: orderReceipts.isFinal, receivedByName: receiver.name,
@@ -94,7 +95,7 @@ export async function addProofs(me: CurrentUser, orderId: number, files: Express
   if (!files.length) throw new HttpError(400, "Vui lòng chọn ít nhất một ảnh hoặc PDF.");
   try {
     const order = await getOrderForAction(orderId);
-    if (!canManageOrder(me, order.createdById)) throw new HttpError(403, "Bạn không có quyền thêm chứng từ cho đơn này.");
+    if (!(await canManageOrder(me, order))) throw new HttpError(403, "Bạn không có quyền thêm chứng từ cho đơn này.");
     if (order.status !== "approved" && !(order.status === "delivered" && me.role === "admin")) {
       throw new HttpError(409, "Chỉ đơn đã duyệt hoặc đã nhận hàng mới được cập nhật chứng từ.");
     }
@@ -123,7 +124,7 @@ export async function addProofs(me: CurrentUser, orderId: number, files: Express
 
 export async function getProofFile(me: CurrentUser, orderId: number, proofId: number) {
   const order = await getOrderForAction(orderId);
-  if (me.role === "site" && order.createdById !== me.id) throw new HttpError(403, "Bạn không có quyền xem chứng từ của đơn này.");
+  if (me.role === "site" && !(await canManageOrder(me, order))) throw new HttpError(403, "Bạn không có quyền xem chứng từ của đơn này.");
   const [proof] = await db.select().from(orderProofs).where(and(eq(orderProofs.id, proofId), eq(orderProofs.orderId, orderId)));
   if (!proof) throw new HttpError(404, "Không tìm thấy chứng từ.");
   return { ...proof, path: proofPath(proof.storedName) };
@@ -133,7 +134,7 @@ export async function deleteProof(me: CurrentUser, orderId: number, proofId: num
   const order = await getOrderForAction(orderId);
   const [proof] = await db.select().from(orderProofs).where(and(eq(orderProofs.id, proofId), eq(orderProofs.orderId, orderId)));
   if (!proof) throw new HttpError(404, "Không tìm thấy chứng từ.");
-  const creatorCanDelete = order.status === "approved" && !proof.receiptId && me.role === "site" && order.createdById === me.id;
+  const creatorCanDelete = order.status === "approved" && !proof.receiptId && me.role === "site" && await canManageOrder(me, order);
   if (me.role !== "admin" && !creatorCanDelete) throw new HttpError(403, "Sau khi ghi nhận một đợt, chỉ Admin được xóa chứng từ của đợt đó.");
   await db.transaction(async (tx) => {
     await tx.delete(orderProofs).where(eq(orderProofs.id, proofId));
@@ -176,6 +177,7 @@ export async function confirmReceipt(me: CurrentUser, orderId: number, input: Re
     await tx.execute(sql`SELECT id FROM orders WHERE id = ${orderId} FOR UPDATE`);
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId));
     if (!order) throw new HttpError(404, "Không tìm thấy đơn.");
+    if (!(await canManageOrder(me, order))) throw new HttpError(403, "Chỉ người tạo, kỹ thuật phụ trách công trình hoặc Admin được xác nhận nhận hàng.");
     const clientToken = String(input.clientToken ?? "").trim();
     if (!clientToken || clientToken.length > 100) throw new HttpError(400, "Phiên xác nhận không hợp lệ. Vui lòng tải lại trang.");
     const [existingEvent] = await tx.select({ id: orderReceipts.id, orderId: orderReceipts.orderId }).from(orderReceipts).where(eq(orderReceipts.clientToken, clientToken));
@@ -184,7 +186,6 @@ export async function confirmReceipt(me: CurrentUser, orderId: number, input: Re
       duplicate = true;
       return;
     }
-    if (!canManageOrder(me, order.createdById)) throw new HttpError(403, "Chỉ người tạo đơn hoặc Admin được xác nhận nhận hàng.");
     if (order.status === "delivered") throw new HttpError(409, "Đơn này đã nhận đủ hàng.");
     if (order.status !== "approved") throw new HttpError(409, "Đơn phải được duyệt trước khi xác nhận nhận hàng.");
     const [{ value: proofCount }] = await tx.select({ value: count() }).from(orderProofs)

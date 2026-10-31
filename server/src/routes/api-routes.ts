@@ -27,6 +27,7 @@ apiRouter.delete("/orders/:id/proofs/:proofId", requireRoles("site", "admin"), a
 apiRouter.post("/orders/:id/confirm-receipt", requireRoles("site", "admin"), api.orderConfirmReceipt);
 
 apiRouter.get("/projects", api.projectList);
+apiRouter.get("/technicians", requireRoles("admin"), api.technicianList);
 apiRouter.post("/projects", requireRoles("admin"), api.projectCreate);
 apiRouter.patch("/projects/:id", requireRoles("admin"), api.projectUpdate);
 apiRouter.delete("/projects/:id", requireRoles("admin"), api.projectDelete);

@@ -10,6 +10,7 @@ import { logActivity } from "./activity-service.js";
 import { sendEmail } from "./email-service.js";
 import { listProofs, listReceiptEvents } from "./receipt-service.js";
 import { sendPushNotifications } from "./push-service.js";
+import { canAccessProject, siteOrderScope } from "./project-access-service.js";
 
 type CurrentUser = { id: string; name: string; role: UserRole };
 type NewOrder = { projectId: number; supplierContactId?: number | null; note?: string | null; items?: { materialId: number; qty: number; unitPrice: number }[] };
@@ -18,7 +19,7 @@ const creator = alias(user, "creator");
 const receiver = alias(user, "receiver");
 
 function scopedOrderWhere(me: CurrentUser) {
-  if (me.role === "site") return eq(orders.createdById, me.id);
+  if (me.role === "site") return siteOrderScope(me.id);
   return undefined;
 }
 
@@ -39,7 +40,7 @@ export async function getOrder(me: CurrentUser, orderId: number) {
     total: orders.total, createdAt: orders.createdAt, approvedAt: orders.approvedAt,
     deliveredAt: orders.deliveredAt, rejectedReason: orders.rejectedReason,
     receiptNote: orders.receiptNote, actualPostedAt: orders.actualPostedAt,
-    createdById: orders.createdById,
+    createdById: orders.createdById, projectId: orders.projectId,
     projectName: projects.name, creatorName: creator.name, receivedByName: receiver.name,
     supplierContactName: supplierContacts.name, supplierContactPhone: supplierContacts.phone,
   }).from(orders).innerJoin(projects, eq(orders.projectId, projects.id))
@@ -48,7 +49,7 @@ export async function getOrder(me: CurrentUser, orderId: number) {
     .leftJoin(supplierContacts, eq(orders.supplierContactId, supplierContacts.id))
     .where(eq(orders.id, orderId));
   if (!order) return null;
-  if (me.role === "site" && order.createdById !== me.id) throw new Error("Bạn không có quyền xem đơn này.");
+  if (me.role === "site" && order.createdById !== me.id && !(await canAccessProject(me.id, order.projectId))) throw new Error("Bạn không có quyền xem đơn này.");
   const [items, timeline, proofs, receiptEvents] = await Promise.all([
     db.select({ id: orderItems.id, materialId: materials.id, name: materials.name, unit: materials.unit,
       group: materials.group, qty: orderItems.qty, unitPrice: orderItems.unitPrice, amount: orderItems.amount })

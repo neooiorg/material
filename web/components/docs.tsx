@@ -12,7 +12,7 @@ flowchart LR
 
   subgraph ADMIN[Quản trị viên]
     direction TB
-    A_PROJECT[Quản lý công trình]
+    A_PROJECT[Quản lý công trình<br/>và phân công kỹ thuật]
     A_MATERIAL[Quản lý danh mục vật tư]
     A_SUPPLIER[Quản lý đơn vị cung cấp]
     A_BUDGET[Lập dự toán công trình]
@@ -25,7 +25,7 @@ flowchart LR
   subgraph SITE[Bộ phận thi công]
     direction TB
     S_CREATE[Tạo đơn đặt vật tư]
-    S_HISTORY[Xem chi tiết và lịch sử đơn]
+    S_HISTORY[Xem đơn mình tạo<br/>hoặc công trình phụ trách]
     S_SHARE[Gửi nội dung đặt hàng qua Zalo]
     S_RECEIVE[Ghi nhận nhiều đợt nhận hàng]
     S_CAMERA[Chụp ảnh hoặc chọn ảnh / PDF]
@@ -111,12 +111,12 @@ flowchart LR
 
 const mainDiagram = String.raw`
 flowchart LR
-  A[Quản trị chuẩn bị<br/>công trình · vật tư · dự toán] --> B[Thi công tạo đơn vật tư]
+  A[Quản trị chuẩn bị<br/>công trình · vật tư · dự toán<br/>và phân công kỹ thuật] --> B[Thi công tạo đơn vật tư]
   B --> C{Quản trị duyệt đơn}
   C -->|Từ chối| D[Thi công chỉnh sửa đơn]
   D --> B
   C -->|Duyệt| E[Chờ hàng đến công trình]
-  E --> F[Thi công chụp ảnh<br/>hoặc tải phiếu PDF]
+  E --> F[Người tạo hoặc kỹ thuật phụ trách<br/>chụp ảnh / tải phiếu PDF]
   F --> G[Ghi ngày và số lượng<br/>thực nhận trong đợt]
   G --> H[Hệ thống cộng số lượng<br/>và chi phí của đợt]
   H --> J{Đã nhận đủ đơn?}
@@ -141,7 +141,7 @@ const roleDiagrams = {
 flowchart TB
   LOGIN([Đăng nhập]) --> DASH[Tổng quan]
   DASH --> SETUP[Chuẩn bị dữ liệu]
-  SETUP --> PROJECT[Quản lý công trình]
+  SETUP --> PROJECT[Quản lý công trình<br/>phân công kỹ thuật]
   SETUP --> MATERIAL[Quản lý vật tư]
   SETUP --> SUPPLIER[Đơn vị cung cấp]
   SETUP --> BUDGET[Dự toán]
@@ -170,7 +170,7 @@ flowchart TB
   SELECT --> PENDING[Chờ Admin duyệt]
   PENDING -->|Từ chối| EDIT[Chỉnh sửa và gửi lại]
   EDIT --> PENDING
-  PENDING -->|Duyệt| WAIT[Chờ nhận hàng]
+  PENDING -->|Duyệt| WAIT[Xem đơn mình tạo hoặc<br/>công trình được phân công]
   WAIT --> CAMERA[Chụp ảnh hoặc chọn ảnh / PDF]
   CAMERA --> CONFIRM[Nhập ngày và số lượng thực nhận]
   CONFIRM --> ENOUGH{Đã nhận đủ?}

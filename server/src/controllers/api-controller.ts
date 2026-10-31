@@ -56,6 +56,7 @@ export async function orderConfirmReceipt(request: Request, response: Response) 
 }
 
 export async function projectList(_request: Request, response: Response) { response.json(await catalog.listProjects()); }
+export async function technicianList(_request: Request, response: Response) { response.json(await catalog.listTechnicians()); }
 export async function projectCreate(request: Request, response: Response) { await catalog.createProject(me(request), request.body); response.status(201).json({ ok: true }); }
 export async function projectUpdate(request: Request, response: Response) { await catalog.updateProject(me(request), idParam(request), request.body); response.json({ ok: true }); }
 export async function projectDelete(request: Request, response: Response) { await catalog.deleteProject(me(request), idParam(request)); response.json({ ok: true }); }
