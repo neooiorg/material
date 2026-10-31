@@ -345,7 +345,7 @@ function renderPage(pathname: string, role: Role) {
   if (pathname === "/orders") return <Orders canCreate={role !== "accountant"}/>;
   if (/^\/orders\/\d+$/.test(pathname)) return <OrderDetail id={Number(pathname.split("/")[2])} role={role}/>;
   if (pathname === "/approvals" && role === "admin") return <Orders approvals/>;
-  if (pathname === "/receipts" && role !== "accountant") return <Receipts/>;
+  if (pathname === "/receipts" && role !== "accountant") return <Receipts role={role}/>;
   if (pathname === "/projects") return <Projects/>;
   if (/^\/projects\/\d+$/.test(pathname)) return <ProjectDetail id={Number(pathname.split("/")[2])}/>;
   if (pathname === "/reconcile") return <Reconcile/>;

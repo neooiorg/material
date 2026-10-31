@@ -47,12 +47,21 @@ export type ReceiptEvent = {
 
 type ReceiptOrderItem = { id: number; name: string; unit: string; qty: string; unitPrice: string };
 
-export function Receipts() {
+export function Receipts({ role }: { role: Role }) {
   const query = useApi<ReceiptRow[]>("/api/receipts");
   return <>
-    <PageTitle title="Xác nhận nhận hàng" description="Các đơn đã duyệt đang chờ kỹ thuật chụp ảnh hoặc đính kèm phiếu xác thực." />
+    <PageTitle title="Xác nhận nhận hàng" description={role === "site" ? "Các đơn do bạn tạo, đã được duyệt và còn vật tư chờ nhận." : "Các đơn đã duyệt còn vật tư chờ xác nhận nhận hàng."} />
     <DataState loading={query.loading} error={query.error} retry={query.refresh}>
-      <DataGrid
+      {query.data?.length === 0 ? <Card>
+        <CardContent className="flex flex-col items-start gap-3 py-8 sm:py-10">
+          <PackageCheck className="size-8 text-muted-foreground" aria-hidden="true" />
+          <div className="space-y-1">
+            <h2 className="font-semibold">Không có đơn chờ nhận hàng</h2>
+            <p className="max-w-xl text-sm text-muted-foreground">{role === "site" ? "Trang này chỉ hiển thị đơn do chính tài khoản của bạn tạo sau khi Admin duyệt. Đơn của kỹ thuật khác không xuất hiện ở đây." : "Các đơn đã duyệt và chưa nhận đủ vật tư sẽ xuất hiện ở đây."}</p>
+          </div>
+          {role === "site" ? <Button variant="outline" render={<Link href="/orders" />}>Xem đơn của tôi</Button> : null}
+        </CardContent>
+      </Card> : <DataGrid
         rows={query.data ?? []}
         search="Tìm mã đơn, công trình, người tạo"
         searchText={(row) => `${row.code} ${row.projectName} ${row.creatorName}`}
@@ -66,7 +75,7 @@ export function Receipts() {
           { id: "total", label: "Giá trị", accessor: (row) => Number(row.total), filter: { type: "number" }, render: (row) => money(row.total) },
           { id: "action", label: "", sortable: false, hideable: false, exportable: false, render: (row) => <Button size="sm" render={<Link href={`/orders/${row.id}`} />}>Xác nhận</Button> },
         ]}
-      />
+      />}
     </DataState>
   </>;
 }
