@@ -51,7 +51,7 @@ export async function orderProofDelete(request: Request, response: Response) {
   response.json({ ok: true });
 }
 export async function orderConfirmReceipt(request: Request, response: Response) {
-  await receipts.confirmReceipt(me(request), idParam(request), String(request.body?.note ?? ""));
+  await receipts.confirmReceipt(me(request), idParam(request), request.body ?? {});
   response.json({ ok: true });
 }
 

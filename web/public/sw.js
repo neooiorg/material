@@ -1,4 +1,4 @@
-const VERSION = "so-vat-tu-pwa-v5";
+const VERSION = "so-vat-tu-pwa-v6";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const APP_SHELL = [

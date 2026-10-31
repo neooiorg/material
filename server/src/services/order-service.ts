@@ -8,7 +8,7 @@ import {
 import { toNumber } from "../lib/utils.js";
 import { logActivity } from "./activity-service.js";
 import { sendEmail } from "./email-service.js";
-import { listProofs } from "./receipt-service.js";
+import { listProofs, listReceiptEvents } from "./receipt-service.js";
 import { sendPushNotifications } from "./push-service.js";
 
 type CurrentUser = { id: string; name: string; role: UserRole };
@@ -49,7 +49,7 @@ export async function getOrder(me: CurrentUser, orderId: number) {
     .where(eq(orders.id, orderId));
   if (!order) return null;
   if (me.role === "site" && order.createdById !== me.id) throw new Error("Bạn không có quyền xem đơn này.");
-  const [items, timeline, proofs] = await Promise.all([
+  const [items, timeline, proofs, receiptEvents] = await Promise.all([
     db.select({ id: orderItems.id, materialId: materials.id, name: materials.name, unit: materials.unit,
       group: materials.group, qty: orderItems.qty, unitPrice: orderItems.unitPrice, amount: orderItems.amount })
       .from(orderItems).innerJoin(materials, eq(orderItems.materialId, materials.id))
@@ -57,8 +57,9 @@ export async function getOrder(me: CurrentUser, orderId: number) {
     db.select().from(activityLog).where(and(eq(activityLog.entityType, "order"), eq(activityLog.entityId, orderId)))
       .orderBy(asc(activityLog.createdAt)),
     listProofs(me, orderId),
+    listReceiptEvents(me, orderId),
   ]);
-  return { ...order, supplierContact: order.supplierContactName ? { name: order.supplierContactName, phone: order.supplierContactPhone } : null, items, timeline, proofs };
+  return { ...order, supplierContact: order.supplierContactName ? { name: order.supplierContactName, phone: order.supplierContactPhone } : null, items, timeline, proofs, receiptEvents };
 }
 
 export async function getApprovalOrders() {

@@ -1,20 +1,34 @@
 import { alias } from "drizzle-orm/pg-core";
 import { and, asc, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { budgets, materials, orderItems, orders, projectMaterialActual, projectSupplierContacts, projects, supplierContacts, user, type UserRole } from "../db/schema.js";
+import { budgets, materials, orderItems, orderReceiptItems, orderReceipts, orders, projectMaterialActual, projectSupplierContacts, projects, supplierContacts, user, type UserRole } from "../db/schema.js";
 import { monthRange, toNumber } from "../lib/utils.js";
 
 type CurrentUser = { id: string; role: UserRole };
 
 export async function materialCosts(month?: string, projectId?: number) {
   const range = monthRange(month);
-  const conditions = [gte(orders.actualPostedAt, range.start), lt(orders.actualPostedAt, range.end)];
-  if (projectId) conditions.push(eq(orders.projectId, projectId));
-  const rows = await db.select({ materialId: materials.id, name: materials.name, unit: materials.unit, group: materials.group,
+  const receiptConditions = [gte(orderReceipts.receivedAt, range.start), lt(orderReceipts.receivedAt, range.end), eq(orders.legacyActualPosted, false)];
+  const legacyConditions = [gte(orders.actualPostedAt, range.start), lt(orders.actualPostedAt, range.end), eq(orders.legacyActualPosted, true)];
+  if (projectId) { receiptConditions.push(eq(orders.projectId, projectId)); legacyConditions.push(eq(orders.projectId, projectId)); }
+  const receiptRows = await db.select({ materialId: materials.id, name: materials.name, unit: materials.unit, group: materials.group,
+    qty: sql<string>`coalesce(sum(${orderReceiptItems.qty}), 0)`, amount: sql<string>`coalesce(sum(${orderReceiptItems.amount}), 0)` })
+    .from(orderReceiptItems).innerJoin(orderReceipts, eq(orderReceiptItems.receiptId, orderReceipts.id))
+    .innerJoin(orders, eq(orderReceipts.orderId, orders.id)).innerJoin(orderItems, eq(orderReceiptItems.orderItemId, orderItems.id))
+    .innerJoin(materials, eq(orderItems.materialId, materials.id)).where(and(...receiptConditions))
+    .groupBy(materials.id, materials.name, materials.unit, materials.group);
+  const legacyRows = await db.select({ materialId: materials.id, name: materials.name, unit: materials.unit, group: materials.group,
     qty: sql<string>`coalesce(sum(${orderItems.qty}), 0)`, amount: sql<string>`coalesce(sum(${orderItems.amount}), 0)` })
     .from(orderItems).innerJoin(orders, eq(orderItems.orderId, orders.id)).innerJoin(materials, eq(orderItems.materialId, materials.id))
-    .where(and(...conditions)).groupBy(materials.id, materials.name, materials.unit, materials.group).orderBy(asc(materials.group), asc(materials.name));
-  return { range, rows: rows.map((row) => ({ ...row, qty: toNumber(row.qty), amount: toNumber(row.amount) })) };
+    .where(and(...legacyConditions)).groupBy(materials.id, materials.name, materials.unit, materials.group);
+  const merged = new Map<number, { materialId: number; name: string; unit: string; group: string; qty: number; amount: number }>();
+  for (const row of [...receiptRows, ...legacyRows]) {
+    const current = merged.get(row.materialId);
+    if (current) { current.qty += toNumber(row.qty); current.amount += toNumber(row.amount); }
+    else merged.set(row.materialId, { ...row, qty: toNumber(row.qty), amount: toNumber(row.amount) });
+  }
+  const rows = [...merged.values()].sort((a, b) => a.group === b.group ? a.name.localeCompare(b.name) : a.group.localeCompare(b.group));
+  return { range, rows };
 }
 
 export async function getReport(month?: string, projectId?: number) {
@@ -75,13 +89,18 @@ export async function getDashboard(me: CurrentUser) {
   const ownOrderScope = me.role === "site" ? eq(orders.createdById, me.id) : undefined;
   const pendingWhere = ownOrderScope ? and(eq(orders.status, "pending"), ownOrderScope) : eq(orders.status, "pending");
   const awaitingReceiptWhere = ownOrderScope ? and(eq(orders.status, "approved"), ownOrderScope) : eq(orders.status, "approved");
-  const receivedMonthWhere = ownOrderScope
-    ? and(gte(orders.actualPostedAt, monthStart), ownOrderScope)
-    : gte(orders.actualPostedAt, monthStart);
-  const [[projectCount], [pendingCount], [awaitingReceiptCount], [receivedMonth], [materialCount], statusRows] = await Promise.all([
+  const receiptMonthWhere = ownOrderScope
+    ? and(gte(orderReceipts.receivedAt, monthStart), eq(orders.legacyActualPosted, false), ownOrderScope)
+    : and(gte(orderReceipts.receivedAt, monthStart), eq(orders.legacyActualPosted, false));
+  const legacyMonthWhere = ownOrderScope
+    ? and(gte(orders.actualPostedAt, monthStart), eq(orders.legacyActualPosted, true), ownOrderScope)
+    : and(gte(orders.actualPostedAt, monthStart), eq(orders.legacyActualPosted, true));
+  const [[projectCount], [pendingCount], [awaitingReceiptCount], [receivedMonth], [legacyReceivedMonth], [materialCount], statusRows] = await Promise.all([
     db.select({ value: count() }).from(projects), db.select({ value: count() }).from(orders).where(pendingWhere),
     db.select({ value: count() }).from(orders).where(awaitingReceiptWhere),
-    db.select({ value: sql<string>`coalesce(sum(${orders.total}), 0)` }).from(orders).where(receivedMonthWhere),
+    db.select({ value: sql<string>`coalesce(sum(${orderReceiptItems.amount}), 0)` }).from(orderReceiptItems)
+      .innerJoin(orderReceipts, eq(orderReceiptItems.receiptId, orderReceipts.id)).innerJoin(orders, eq(orderReceipts.orderId, orders.id)).where(receiptMonthWhere),
+    db.select({ value: sql<string>`coalesce(sum(${orders.total}), 0)` }).from(orders).where(legacyMonthWhere),
     db.select({ value: count() }).from(materials),
     db.select({ status: orders.status, value: count() }).from(orders).where(ownOrderScope).groupBy(orders.status),
   ]);
@@ -92,7 +111,7 @@ export async function getDashboard(me: CurrentUser) {
     .where(ownOrderScope)
     .orderBy(desc(orders.createdAt)).limit(6);
   return { projectCount: projectCount.value, pendingCount: pendingCount.value, awaitingReceiptCount: awaitingReceiptCount.value,
-    materialCount: materialCount.value, receivedMonth: toNumber(receivedMonth.value), statusRows, recentOrders };
+    materialCount: materialCount.value, receivedMonth: toNumber(receivedMonth.value) + toNumber(legacyReceivedMonth.value), statusRows, recentOrders };
 }
 
 function csvCell(value: string | number) { const text = String(value ?? ""); return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text; }

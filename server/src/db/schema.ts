@@ -97,11 +97,25 @@ export const orders = pgTable("orders", {
   receivedById: text("received_by_id").references(() => user.id, { onDelete: "set null" }),
   receiptNote: text("receipt_note"),
   actualPostedAt: timestamp("actual_posted_at"),
+  legacyActualPosted: boolean("legacy_actual_posted").notNull().default(false),
 });
+
+export const orderReceipts = pgTable("order_receipts", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  sequence: integer("sequence").notNull(),
+  receivedAt: timestamp("received_at").notNull(),
+  receivedById: text("received_by_id").references(() => user.id, { onDelete: "set null" }),
+  note: text("note"),
+  isFinal: boolean("is_final").notNull().default(false),
+  clientToken: text("client_token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [uniqueIndex("order_receipts_order_sequence_uq").on(table.orderId, table.sequence)]);
 
 export const orderProofs = pgTable("order_proofs", {
   id: serial("id").primaryKey(),
   orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  receiptId: integer("receipt_id").references(() => orderReceipts.id, { onDelete: "set null" }),
   originalName: text("original_name").notNull(),
   storedName: text("stored_name").notNull().unique(),
   mimeType: text("mime_type").notNull(),
@@ -117,6 +131,14 @@ export const orderItems = pgTable("order_items", {
   unitPrice: numeric("unit_price", { precision: 18, scale: 2 }).notNull().default("0"),
   amount: numeric("amount", { precision: 18, scale: 2 }).notNull().default("0"),
 });
+
+export const orderReceiptItems = pgTable("order_receipt_items", {
+  id: serial("id").primaryKey(),
+  receiptId: integer("receipt_id").notNull().references(() => orderReceipts.id, { onDelete: "cascade" }),
+  orderItemId: integer("order_item_id").notNull().references(() => orderItems.id, { onDelete: "restrict" }),
+  qty: numeric("qty", { precision: 14, scale: 3 }).notNull(),
+  amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+}, (table) => [uniqueIndex("order_receipt_items_receipt_item_uq").on(table.receiptId, table.orderItemId)]);
 
 export const projectMaterialActual = pgTable("project_material_actual", {
   id: serial("id").primaryKey(),

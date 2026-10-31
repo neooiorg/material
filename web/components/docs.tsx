@@ -27,7 +27,7 @@ flowchart LR
     S_CREATE[Tạo đơn đặt vật tư]
     S_HISTORY[Xem chi tiết và lịch sử đơn]
     S_SHARE[Gửi nội dung đặt hàng qua Zalo]
-    S_RECEIVE[Xác nhận nhận hàng một lần]
+    S_RECEIVE[Ghi nhận nhiều đợt nhận hàng]
     S_CAMERA[Chụp ảnh hoặc chọn ảnh / PDF]
   end
 
@@ -56,14 +56,17 @@ flowchart LR
     F_REJECT[Đã từ chối]
     F_APPROVED[Chờ nhận hàng]
     F_EVIDENCE[Ảnh / phiếu nhận hàng]
-    F_DELIVERED[Đã nhận hàng]
-    F_ACTUAL[Cộng thực tế đúng một lần]
+    F_PARTIAL[Đang nhận hàng nhiều đợt]
+    F_DELIVERED[Đã nhận đủ hàng]
+    F_ACTUAL[Cộng thực tế theo từng đợt]
     F_SUMMARY[Thống kê · đối chiếu · tổng hợp]
     F_SETUP --> F_DRAFT --> F_PENDING
     F_PENDING -->|Từ chối| F_REJECT
     F_REJECT -->|Chỉnh và gửi lại| F_DRAFT
     F_PENDING -->|Duyệt| F_APPROVED
-    F_APPROVED --> F_EVIDENCE --> F_DELIVERED --> F_ACTUAL --> F_SUMMARY
+    F_APPROVED --> F_EVIDENCE --> F_PARTIAL --> F_ACTUAL --> F_SUMMARY
+    F_PARTIAL -->|Còn thiếu| F_EVIDENCE
+    F_PARTIAL -->|Đã đủ| F_DELIVERED
   end
 
   HOME --> ADMIN
@@ -102,7 +105,7 @@ flowchart LR
   class S_CREATE,S_HISTORY,S_SHARE,S_RECEIVE,S_CAMERA site
   class C_ORDER,C_RECON,C_REPORT,C_EXPORT account
   class X_PROJECT,X_NOTIFY,X_PWA,X_UPDATE,X_GUIDE shared
-  class F_SETUP,F_DRAFT,F_PENDING,F_REJECT,F_APPROVED,F_EVIDENCE,F_DELIVERED,F_ACTUAL,F_SUMMARY flow
+  class F_SETUP,F_DRAFT,F_PENDING,F_REJECT,F_APPROVED,F_EVIDENCE,F_PARTIAL,F_DELIVERED,F_ACTUAL,F_SUMMARY flow
   class START,HOME,F_DELIVERED,F_ACTUAL important
 `;
 
@@ -114,9 +117,12 @@ flowchart LR
   D --> B
   C -->|Duyệt| E[Chờ hàng đến công trình]
   E --> F[Thi công chụp ảnh<br/>hoặc tải phiếu PDF]
-  F --> G[Xác nhận nhận hàng một lần]
-  G --> H[Hệ thống cộng số lượng<br/>và chi phí thực tế]
-  H --> I[Kế toán đối chiếu<br/>thống kê và xuất CSV]
+  F --> G[Ghi ngày và số lượng<br/>thực nhận trong đợt]
+  G --> H[Hệ thống cộng số lượng<br/>và chi phí của đợt]
+  H --> J{Đã nhận đủ đơn?}
+  J -->|Chưa| E
+  J -->|Đủ| K[Hoàn tất đơn]
+  K --> I[Kế toán đối chiếu<br/>thống kê và xuất CSV]
   G -.-> N[Thông báo Admin và Kế toán]
   H --> P[Tổng hợp theo công trình]
 
@@ -127,7 +133,7 @@ flowchart LR
   class A,C admin
   class B,D,E,F,G site
   class I account
-  class H,N,P system
+  class H,J,K,N,P system
 `;
 
 const roleDiagrams = {
@@ -142,7 +148,7 @@ flowchart TB
   SETUP --> MEMBER[Thành viên và phân quyền]
   DASH --> APPROVE[Duyệt hoặc từ chối đơn]
   APPROVE --> WAIT[Đơn chờ nhận hàng]
-  WAIT --> RECEIVE[Xác nhận thay khi cần]
+  WAIT --> RECEIVE[Ghi nhận từng đợt khi hàng về]
   RECEIVE --> PROOF[Thêm hoặc xóa chứng từ sau xác nhận]
   DASH --> CONTROL[Theo dõi hệ thống]
   CONTROL --> PROJECT_SUM[Tổng hợp công trình]
@@ -166,14 +172,16 @@ flowchart TB
   EDIT --> PENDING
   PENDING -->|Duyệt| WAIT[Chờ nhận hàng]
   WAIT --> CAMERA[Chụp ảnh hoặc chọn ảnh / PDF]
-  CAMERA --> CONFIRM[Xác nhận nhận hàng một lần]
-  CONFIRM --> HISTORY[Xem lịch sử và chứng từ]
+  CAMERA --> CONFIRM[Nhập ngày và số lượng thực nhận]
+  CONFIRM --> ENOUGH{Đã nhận đủ?}
+  ENOUGH -->|Chưa| WAIT
+  ENOUGH -->|Đủ| HISTORY[Hoàn tất và xem lịch sử chứng từ]
   DASH --> PROJECT[Tổng hợp công trình]
   DASH --> RECON[Đối chiếu]
   DASH --> NOTIFY[Thông báo]
   classDef role fill:#ecfdf5,stroke:#10b981,color:#065f46,stroke-width:1.5px
   classDef shared fill:#f8fafc,stroke:#64748b,color:#334155,stroke-width:1.5px
-  class LOGIN,DASH,CREATE,SELECT,SHARE,PENDING,EDIT,WAIT,CAMERA,CONFIRM,HISTORY role
+  class LOGIN,DASH,CREATE,SELECT,SHARE,PENDING,EDIT,WAIT,CAMERA,CONFIRM,ENOUGH,HISTORY role
   class PROJECT,RECON,NOTIFY shared
 `,
   accountant: String.raw`
@@ -183,7 +191,7 @@ flowchart TB
   ORDER --> PROOF[Xem hoặc tải chứng từ]
   DASH --> PROJECT[Tổng hợp theo công trình]
   DASH --> RECON[Đối chiếu dự toán với thực tế]
-  RECON --> RECEIVED[Số liệu chỉ tính khi đã nhận hàng]
+  RECON --> RECEIVED[Số liệu cộng theo từng đợt thực nhận]
   DASH --> REPORT[Thống kê theo ngày nhận]
   REPORT --> FILTER[Lọc công trình · thời gian · trạng thái]
   FILTER --> CSV[Xuất báo cáo CSV]

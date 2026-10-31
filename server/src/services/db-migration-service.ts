@@ -48,23 +48,48 @@ export async function ensureRuntimeDatabaseCompatibility() {
     DO $$
     DECLARE
       actual_posted_column_existed BOOLEAN;
+      legacy_posted_column_existed BOOLEAN;
     BEGIN
       SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'actual_posted_at'
       ) INTO actual_posted_column_existed;
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'legacy_actual_posted'
+      ) INTO legacy_posted_column_existed;
 
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS received_by_id TEXT REFERENCES "user"(id) ON DELETE SET NULL;
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS receipt_note TEXT;
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS actual_posted_at TIMESTAMP;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS legacy_actual_posted BOOLEAN NOT NULL DEFAULT FALSE;
 
       IF NOT actual_posted_column_existed THEN
         UPDATE orders
-        SET actual_posted_at = COALESCE(approved_at, delivered_at, created_at)
+        SET actual_posted_at = COALESCE(approved_at, delivered_at, created_at),
+            legacy_actual_posted = TRUE
         WHERE status IN ('approved', 'delivered') AND actual_posted_at IS NULL;
+      END IF;
+      IF NOT legacy_posted_column_existed THEN
+        UPDATE orders SET legacy_actual_posted = TRUE WHERE actual_posted_at IS NOT NULL;
       END IF;
     END $$;
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS order_receipts (
+      id SERIAL PRIMARY KEY,
+      order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      sequence INTEGER NOT NULL,
+      received_at TIMESTAMP NOT NULL,
+      received_by_id TEXT REFERENCES "user"(id) ON DELETE SET NULL,
+      note TEXT,
+      is_final BOOLEAN NOT NULL DEFAULT FALSE,
+      client_token TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS order_receipts_order_sequence_uq ON order_receipts(order_id, sequence)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS order_receipts_order_id_idx ON order_receipts(order_id)`);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS order_proofs (
       id SERIAL PRIMARY KEY,
@@ -77,7 +102,28 @@ export async function ensureRuntimeDatabaseCompatibility() {
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `);
+  await db.execute(sql`ALTER TABLE order_proofs ADD COLUMN IF NOT EXISTS receipt_id INTEGER`);
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'order_proofs_receipt_id_fkey') THEN
+        ALTER TABLE order_proofs ADD CONSTRAINT order_proofs_receipt_id_fkey
+          FOREIGN KEY (receipt_id) REFERENCES order_receipts(id) ON DELETE SET NULL;
+      END IF;
+    END $$;
+  `);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS order_proofs_order_id_idx ON order_proofs(order_id)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS order_proofs_receipt_id_idx ON order_proofs(receipt_id)`);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS order_receipt_items (
+      id SERIAL PRIMARY KEY,
+      receipt_id INTEGER NOT NULL REFERENCES order_receipts(id) ON DELETE CASCADE,
+      order_item_id INTEGER NOT NULL REFERENCES order_items(id) ON DELETE RESTRICT,
+      qty NUMERIC(14, 3) NOT NULL,
+      amount NUMERIC(18, 2) NOT NULL
+    )
+  `);
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS order_receipt_items_receipt_item_uq ON order_receipt_items(receipt_id, order_item_id)`);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS push_subscriptions (
       id SERIAL PRIMARY KEY,

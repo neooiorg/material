@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DataGrid, DataState, Field, MetricCard, NativeSelect, PageTitle, Status, useApi } from "@/components/common";
 import { DashboardStatCard } from "@/components/dashboard-stat-card";
 import { BudgetActualChart, GroupCostChart, MaterialComparisonChart, MaterialCostChart, OrderStatusChart } from "@/components/analytics-charts";
-import { OrderProofs, type OrderProof } from "@/components/receipts";
+import { OrderProofs, type OrderProof, type ReceiptEvent } from "@/components/receipts";
 import { Boxes, Building2, ClipboardCheck, Truck, WalletCards } from "lucide-react";
 import { PushNotificationSettings } from "@/components/push-notification-settings";
 import { announceNotificationsChanged, NOTIFICATIONS_CHANGED_EVENT } from "@/components/notification-sync";
@@ -74,7 +74,7 @@ export function Orders({ approvals = false, canCreate = false }: { approvals?: b
   return <><PageTitle title={approvals ? "Đơn chờ duyệt" : "Đơn đặt vật tư"} description={approvals ? "Kiểm tra nội dung và duyệt hoặc từ chối từng đơn." : "Theo dõi toàn bộ đơn theo quyền truy cập."} action={canCreate ? <Button render={<Link href="/orders/new"/>}>Tạo đơn</Button> : undefined}/><Card size="sm" className="mb-5 max-w-sm"><CardContent><NativeSelect label="Trạng thái" value={status} onChange={setStatus} options={[{ value: "all", label: "Tất cả" }, { value: "pending", label: "Chờ duyệt" }, { value: "approved", label: "Chờ nhận hàng" }, { value: "delivered", label: "Đã nhận hàng" }, { value: "rejected", label: "Từ chối" }]}/></CardContent></Card><DataState loading={query.loading} error={query.error} retry={query.refresh}><OrderTable rows={rows}/></DataState></>;
 }
 
-type OrderDetailData = OrderRow & { note: string | null; rejectedReason: string | null; approvedAt: string | null; deliveredAt: string | null; receivedByName: string | null; receiptNote: string | null; actualPostedAt: string | null; supplierContact: Contact | null; items: { id: number; name: string; qty: string; unit: string; unitPrice: string; amount: string }[]; timeline: { id: number; summary: string; createdAt: string }[]; proofs: OrderProof[] };
+type OrderDetailData = OrderRow & { note: string | null; rejectedReason: string | null; approvedAt: string | null; deliveredAt: string | null; receivedByName: string | null; receiptNote: string | null; actualPostedAt: string | null; supplierContact: Contact | null; items: { id: number; name: string; qty: string; unit: string; unitPrice: string; amount: string }[]; timeline: { id: number; summary: string; createdAt: string }[]; proofs: OrderProof[]; receiptEvents: ReceiptEvent[] };
 export function OrderDetail({ id, role }: { id: number; role: Role }) {
   const query = useApi<OrderDetailData>(`/api/orders/${id}`);
   const [reason, setReason] = useState("");
@@ -129,7 +129,7 @@ export function OrderDetail({ id, role }: { id: number; role: Role }) {
               <p className="mt-4 text-right text-lg font-semibold">Tổng cộng: {money(order.total)}</p>
             </CardContent>
           </Card>
-          <OrderProofs orderId={id} status={order.status} role={role} proofs={order.proofs ?? []} receivedAt={order.deliveredAt} receivedByName={order.receivedByName} receiptNote={order.receiptNote} onRefresh={query.refresh} />
+          <OrderProofs orderId={id} status={order.status} role={role} proofs={order.proofs ?? []} receivedAt={order.deliveredAt} receivedByName={order.receivedByName} receiptNote={order.receiptNote} items={order.items} receiptEvents={order.receiptEvents ?? []} onRefresh={query.refresh} />
         </div>
         <div className="space-y-5">
           <Card>
