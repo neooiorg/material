@@ -17,6 +17,7 @@ import { OrderProofs, type OrderProof, type ReceiptEvent } from "@/components/re
 import { Boxes, Building2, ClipboardCheck, Truck, WalletCards } from "lucide-react";
 import { PushNotificationSettings } from "@/components/push-notification-settings";
 import { announceNotificationsChanged, NOTIFICATIONS_CHANGED_EVENT } from "@/components/notification-sync";
+import { MonthPicker } from "@/components/ui/month-picker";
 
 type OrderRow = { id: number; code: string; projectName: string; creatorName: string; createdAt: string; status: string; total: string; note?: string; items?: { name: string; qty: string; unit: string }[] };
 type Project = { id: number; code: string; name: string; status: string; address?: string; defaultSupplierContactId?: number | null };
@@ -226,7 +227,7 @@ export function Reports() {
     <Card className="mb-6">
       <CardHeader><CardTitle>Bộ lọc báo cáo</CardTitle><CardDescription>Chọn kỳ thống kê và công trình cần xem.</CardDescription></CardHeader>
       <CardContent className="grid gap-4 md:max-w-3xl md:grid-cols-2">
-        <Field label="Tháng" type="month" value={month} onChange={setMonth}/>
+        <MonthPicker label="Tháng" value={month} onChange={setMonth}/>
         <NativeSelect label="Công trình" value={project} onChange={setProject} options={[{ value: "all", label: "Tất cả công trình" }, ...(data?.projects ?? []).map((p) => ({ value: String(p.id), label: `${p.code} · ${p.name}` }))]}/>
       </CardContent>
     </Card>
